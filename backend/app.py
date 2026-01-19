@@ -5,6 +5,8 @@ from flask_session         import Session
 from src.utils.database_util import DatabaseManager
 from src.utils.config_util import ConfigManager as Config
 
+from .src.routes.auth import auth_bp
+
 app = Flask(__name__)
 
 # 프론트엔드와 세션 유지 가능하게 설정 (프론트엔드에서 꼭 withCredentials: true 확인!)
@@ -31,6 +33,9 @@ DatabaseManager().connect(
     username = Config().get()["Database"]["Username"],
     password = Config().get()["Database"]["Password"],
 )
+
+# 블루프린트 등록
+app.register_blueprint(auth_bp)           # 로그인 & 로그아웃
 
 if __name__ == '__main__':
     try:
