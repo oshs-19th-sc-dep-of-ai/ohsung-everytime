@@ -5,7 +5,8 @@ from flask_session         import Session
 from src.utils.database_util import DatabaseManager
 from src.utils.config_util import ConfigManager as Config
 
-from .src.routes.auth import auth_bp
+from src.routes.auth import auth_bp
+from src.routes.comments import comments_bp
 
 app = Flask(__name__)
 
@@ -36,6 +37,7 @@ DatabaseManager().connect(
 
 # 블루프린트 등록
 app.register_blueprint(auth_bp)           # 로그인 & 로그아웃
+app.register_blueprint(comments_bp, url_prefix='/api') # 댓글 (prefix 추가)
 
 if __name__ == '__main__':
     try:
