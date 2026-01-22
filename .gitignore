@@ -1,3 +1,4 @@
 backend/config.json
 __pycache__/
 backend/flask_session/
+.idea/
