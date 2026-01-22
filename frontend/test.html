@@ -1,10 +1,91 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>로그인 테스트</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        .container { max-width: 400px; margin: 0 auto; border: 1px solid #ccc; padding: 20px; border-radius: 8px; }
+        input { width: 100%; padding: 10px; margin: 5px 0; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; background-color: #007bff; color: white; border: none; cursor: pointer; margin-top: 10px;}
+        button:hover { background-color: #0056b3; }
+        #status-box { margin-top: 20px; padding: 10px; background: #f0f0f0; min-height: 50px; white-space: pre-wrap; }
+    </style>
 </head>
 <body>
+
+<div class="container">
+    <h2>🏫 학생 로그인</h2>
+    <input type="text" id="student_id" placeholder="학번 (ID)" value="test123">
+    <input type="password" id="password" placeholder="비밀번호" value="1234">
+    <button onclick="login()">로그인 하기</button>
+    <button onclick="checkSession()" style="background-color: #28a745;">내 정보 확인 (세션 체크)</button>
+    <button onclick="logout()" style="background-color: #dc3545;">로그아웃</button>
+
+    <h3>결과 확인:</h3>
+    <div id="status-box">여기에 결과가 표시됩니다.</div>
+</div>
+
+<script>
+    const API_URL = "http://localhost:5000";
+
+    // 결과 출력용 함수
+    function log(msg) {
+        const box = document.getElementById('status-box');
+        box.innerText = typeof msg === 'object' ? JSON.stringify(msg, null, 2) : msg;
+        console.log(msg);
+    }
+
+    // 1. 로그인 요청
+    async function login() {
+        const id = document.getElementById('student_id').value;
+        const pw = document.getElementById('password').value;
+
+        try {
+            const res = await fetch(`${API_URL}/login`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+
+                credentials: "include",
+                body: JSON.stringify({ student_id: id, password: pw })
+            });
+            const data = await res.json();
+            log(data);
+            if(res.ok) alert("로그인 성공! '내 정보 확인'을 눌러보세요.");
+        } catch (err) {
+            log("에러 발생: " + err);
+        }
+    }
+
+    // 2. 세션 확인 요청 (로그인 유지 확인)
+    async function checkSession() {
+        try {
+            const res = await fetch(`${API_URL}/check_session`, {
+                method: "GET",
+                credentials: "include" // 이것도 필수!
+            });
+            const data = await res.json();
+            log(data);
+        } catch (err) {
+            log("에러 발생: " + err);
+        }
+    }
+
+    // 3. 로그아웃 요청
+    async function logout() {
+        try {
+            const res = await fetch(`${API_URL}/logout`, {
+                method: "POST",
+                credentials: "include"
+            });
+            const data = await res.json();
+            log(data);
+            alert("로그아웃 되었습니다.");
+        } catch (err) {
+            log("에러 발생: " + err);
+        }
+    }
+</script>
 
 </body>
 </html>
