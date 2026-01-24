@@ -1,0 +1,239 @@
+/* === 디자인 변수 재정의 (MainPage 전용) === */
+.main-container {
+    width: 100%;
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem;
+    animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* === 1. 환영 섹션 === */
+.welcome-header {
+    margin-bottom: 1rem;
+}
+
+.welcome-header h2 {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--text-main);
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.02em;
+}
+
+.welcome-header p {
+    color: var(--text-sub);
+    font-size: 1.05rem;
+}
+
+.wave {
+    display: inline-block;
+    animation: wave-hand 2.5s infinite;
+    transform-origin: 70% 70%;
+}
+
+@keyframes wave-hand {
+    0% { transform: rotate( 0.0deg) }
+    10% { transform: rotate(14.0deg) }
+    20% { transform: rotate(-8.0deg) }
+    30% { transform: rotate(14.0deg) }
+    40% { transform: rotate(-4.0deg) }
+    50% { transform: rotate(10.0deg) }
+    60% { transform: rotate( 0.0deg) }
+    100% { transform: rotate( 0.0deg) }
+}
+
+/* === 2. 대시보드 그리드 === */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+}
+
+/* === 공통 카드 스타일 === */
+.dashboard-card {
+    background-color: white;
+    border-radius: 24px;
+    padding: 2rem;
+    box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.04),
+    0 4px 10px -3px rgba(0, 0, 0, 0.02);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(0,0,0,0.03);
+    display: flex;
+    flex-direction: column;
+}
+
+.dashboard-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 40px -5px rgba(79, 70, 229, 0.15);
+    border-color: rgba(79, 70, 229, 0.3);
+}
+
+.card-content {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    gap: 1.5rem;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.card-header h3 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #1F2937;
+}
+
+.arrow-btn {
+    font-size: 1.2rem;
+    color: #9CA3AF;
+    transition: transform 0.2s;
+}
+
+.dashboard-card:hover .arrow-btn {
+    transform: translateX(5px);
+    color: var(--primary);
+}
+
+/* === 카드 1: 급식 전용 === */
+.meal-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+}
+
+.card-bg-icon {
+    position: absolute;
+    bottom: -10px;
+    right: -10px;
+    font-size: 8rem;
+    opacity: 0.05;
+    z-index: 1;
+    pointer-events: none;
+    filter: grayscale(100%);
+}
+
+.meal-preview {
+    margin-top: auto;
+}
+
+.meal-highlight {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.3rem;
+}
+
+.check-text {
+    font-size: 0.9rem;
+    color: var(--primary);
+    font-weight: 500;
+}
+
+/* === 카드 2: 게시판 전용 (수정됨) === */
+.posts-widget {
+    background-color: #F9FAFB;
+    border-radius: 16px;
+    padding: 1rem;
+    flex-grow: 1;
+}
+
+.post-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.post-item {
+    display: flex;
+    justify-content: space-between; /* 제목과 정보(작성자+시간) 양끝 정렬 */
+    align-items: center;
+    font-size: 0.95rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px dashed #E5E7EB;
+    gap: 1rem; /* 제목과 정보 사이 최소 간격 */
+}
+
+.post-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.post-title {
+    color: #4B5563;
+    font-weight: 500;
+
+    /* 제목 길어지면 ... 처리 */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1; /* 남은 공간 모두 차지 */
+}
+
+/* 작성자와 시간 감싸는 컨테이너 */
+.post-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    color: #9CA3AF;
+    flex-shrink: 0; /* 공간 좁아져도 줄어들지 않음 */
+}
+
+.post-author {
+    color: #6B7280; /* 시간보다 조금 더 진하게 */
+    font-weight: 500;
+    max-width: 60px; /* 작성자 이름 너무 길면 제한 */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.post-divider {
+    color: #E5E7EB; /* 아주 연한 구분선 */
+    font-size: 0.7rem;
+}
+
+/* === 모바일 반응형 === */
+@media (max-width: 768px) {
+    .main-container {
+        padding: 1.5rem 1rem;
+    }
+
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+        gap: 1.2rem;
+    }
+
+    .welcome-header h2 {
+        font-size: 1.6rem;
+    }
+
+    .dashboard-card {
+        padding: 1.5rem;
+    }
+
+    .card-bg-icon {
+        font-size: 6rem;
+    }
+
+    /* 모바일에서는 작성자 이름 길면 더 짧게 */
+    .post-author {
+        max-width: 50px;
+    }
+}

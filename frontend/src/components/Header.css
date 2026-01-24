@@ -1,0 +1,42 @@
+/* === 상단바 (Header) === */
+.top-bar {
+    background-color: var(--bg-card);
+    border-bottom: 1px solid #E5E7EB;
+    width: 100%;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+}
+
+.top-bar-content {
+    width: 100%;
+    max-width: var(--max-width); /* index.css의 변수 사용 */
+    margin: 0 auto;
+    padding: 1rem 1.5rem;
+
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--primary);
+    letter-spacing: -0.5px;
+}
+
+.login-button {
+    background-color: var(--primary);
+    color: white;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.login-button:hover {
+    background-color: var(--primary-hover);
+}
