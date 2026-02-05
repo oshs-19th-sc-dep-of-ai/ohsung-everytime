@@ -35,3 +35,23 @@ CREATE TABLE IF NOT EXISTS CommentLikes (
     FOREIGN KEY (comment_id) REFERENCES Comments (comment_id) ON DELETE CASCADE,
     FOREIGN KEY (student_id) REFERENCES Students (student_id) ON DELETE CASCADE
 );
+
+-- 게시글 테이블 (Posts)
+CREATE TABLE IF NOT EXISTS Posts (
+    post_id INT AUTO_INCREMENT PRIMARY KEY,
+    author_id CHAR(7) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    content TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (author_id) REFERENCES Students (student_id) ON DELETE CASCADE
+);
+
+-- 댓글 변경 이력 테이블 (CommentHistory)
+CREATE TABLE IF NOT EXISTS CommentHistory (
+    history_id INT AUTO_INCREMENT PRIMARY KEY,
+    comment_id INT NOT NULL,
+    prev_content TEXT NOT NULL,
+    new_content TEXT NOT NULL,
+    changed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (comment_id) REFERENCES Comments (comment_id) ON DELETE CASCADE
+);
