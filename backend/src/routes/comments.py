@@ -160,3 +160,81 @@ def like_comment(comment_id):
             "is_liked": liked
         }
     })
+
+# 댓글 수정
+@comments_bp.route('/comments/<int:comment_id>', methods=['PATCH'])
+def update_comment(comment_id):
+    if 'student_id' not in session:
+        return jsonify({"status": "error", "message": "로그인이 필요합니다."}), 401
+    
+    data = request.get_json(silent=True) or {}
+    new_content = data.get('content')
+    
+    if not new_content:
+        return jsonify({"status": "error", "message": "수정할 내용을 입력해주세요."}), 400
+        
+    student_id = session['student_id']
+    db = DatabaseManager()
+    
+    try:
+        comment_query = "SELECT content, author_id, is_deleted FROM Comments WHERE comment_id = %s"
+        comment_res = db.query(comment_query, comment_id).result
+        
+        if not comment_res:
+            return jsonify({"status": "error", "message": "댓글을 찾을 수 없습니다."}), 404
+            
+        old_comment = comment_res[0]
+        
+        if old_comment[2]:
+            return jsonify({"status": "error", "message": "삭제된 댓글은 수정할 수 없습니다."}), 400
+            
+        if old_comment[1] != student_id:
+            return jsonify({"status": "error", "message": "본인의 댓글만 수정할 수 있습니다."}), 403
+
+        history_sql = """
+            INSERT INTO CommentHistory (comment_id, prev_content, new_content)
+            VALUES (%s, %s, %s)
+        """
+        db.query(history_sql, comment_id, old_comment[0], new_content)
+        
+        update_sql = "UPDATE Comments SET content = %s WHERE comment_id = %s"
+        db.query(update_sql, new_content, comment_id)
+        
+        db.commit()
+        
+        return jsonify({
+            "status": "success",
+            "message": "댓글이 수정되었으며 변경 이력이 기록되었습니다."
+        })
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"서버 오류: {str(e)}"}), 500
+
+# 특정 댓글의 수정 이력 전체 조회
+@comments_bp.route('/comments/<int:comment_id>/history', methods=['GET'])
+def get_comment_history(comment_id):
+    db = DatabaseManager()
+    try:
+        history_sql = """
+            SELECT prev_content, new_content, changed_at 
+            FROM CommentHistory 
+            WHERE comment_id = %s 
+            ORDER BY changed_at DESC
+        """
+        rows = db.query(history_sql, comment_id).result
+        
+        history_list = []
+        for row in rows:
+            history_list.append({
+                "prev_content": row[0],
+                "new_content": row[1],
+                "changed_at": row[2].strftime('%Y-%m-%d %H:%M:%S') if row[2] else None
+            })
+            
+        return jsonify({
+            "status": "success",
+            "message": "Comment history retrieved successfully",
+            "data": history_list
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "message": "이력 조회 중 오류 발생"}), 500
