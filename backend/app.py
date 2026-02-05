@@ -40,7 +40,7 @@ DatabaseManager().connect(
 
 # 블루프린트 등록
 app.register_blueprint(auth_bp)           # 로그인 & 로그아웃
-app.register_blueprint(comments_bp, url_prefix='/api') # 댓글 (prefix 추가)
+app.register_blueprint(comments_bp) # 댓글 (prefix 추가)
 app.register_blueprint(meal_bp)
 
 if __name__ == '__main__':
