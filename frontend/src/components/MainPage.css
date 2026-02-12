@@ -1,239 +1,219 @@
-/* === 디자인 변수 재정의 (MainPage 전용) === */
-.main-container {
+/* =========================================
+   Base Layout
+========================================= */
+.app-container {
     width: 100%;
-    max-width: 1000px;
+    max-width: 480px; /* 모바일 뷰 최적화 */
     margin: 0 auto;
-    padding: 2.5rem 1.5rem;
+    min-height: 100vh;
+    background-color: #F6F8FA; /* 아주 연한 회색 배경 */
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    color: #191F28;
+    padding: 30px 20px;
+    box-sizing: border-box;
+}
+
+/* =========================================
+   Header
+========================================= */
+.home-header {
+    margin-bottom: 30px;
+}
+
+.title {
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1.4;
+    margin: 0 0 8px 0;
+    color: #333D4B;
+}
+
+.highlight {
+    color: #3182F6; /* 포인트 컬러 (파랑) */
+}
+
+.subtitle {
+    font-size: 16px;
+    color: #8B95A1;
+    margin: 0;
+    font-weight: 500;
+}
+
+/* =========================================
+   Menu Cards (Common)
+========================================= */
+.main-content {
     display: flex;
     flex-direction: column;
-    gap: 2.5rem;
-    animation: fadeIn 0.5s ease-out;
+    gap: 20px; /* 카드 사이 간격 */
 }
 
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-/* === 1. 환영 섹션 === */
-.welcome-header {
-    margin-bottom: 1rem;
-}
-
-.welcome-header h2 {
-    font-size: 2rem;
-    font-weight: 800;
-    color: var(--text-main);
-    margin-bottom: 0.5rem;
-    letter-spacing: -0.02em;
-}
-
-.welcome-header p {
-    color: var(--text-sub);
-    font-size: 1.05rem;
-}
-
-.wave {
-    display: inline-block;
-    animation: wave-hand 2.5s infinite;
-    transform-origin: 70% 70%;
-}
-
-@keyframes wave-hand {
-    0% { transform: rotate( 0.0deg) }
-    10% { transform: rotate(14.0deg) }
-    20% { transform: rotate(-8.0deg) }
-    30% { transform: rotate(14.0deg) }
-    40% { transform: rotate(-4.0deg) }
-    50% { transform: rotate(10.0deg) }
-    60% { transform: rotate( 0.0deg) }
-    100% { transform: rotate( 0.0deg) }
-}
-
-/* === 2. 대시보드 그리드 === */
-.dashboard-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1.5rem;
-}
-
-/* === 공통 카드 스타일 === */
-.dashboard-card {
-    background-color: white;
+.menu-card {
+    background-color: #FFFFFF;
     border-radius: 24px;
-    padding: 2rem;
-    box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.04),
-    0 4px 10px -3px rgba(0, 0, 0, 0.02);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06); /* 부드러운 그림자 */
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
     overflow: hidden;
-    border: 1px solid rgba(0,0,0,0.03);
-    display: flex;
-    flex-direction: column;
-}
-
-.dashboard-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 20px 40px -5px rgba(79, 70, 229, 0.15);
-    border-color: rgba(79, 70, 229, 0.3);
-}
-
-.card-content {
     position: relative;
-    z-index: 2;
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    gap: 1.5rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.card-header {
+.menu-card:active {
+    transform: scale(0.98); /* 클릭 시 살짝 눌리는 효과 */
+}
+
+/* =========================================
+   1. Meal Section (급식)
+========================================= */
+.meal-section {
+    background: linear-gradient(105deg, #FF7E5F 0%, #FEB47B 100%); /* 식욕을 돋우는 웜톤 그라데이션 */
+    height: 120px;
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    color: white;
+}
+
+.meal-section .card-bg-deco {
+    position: absolute;
+    right: -10px;
+    bottom: -20px;
+    font-size: 100px;
+    opacity: 0.2;
+    transform: rotate(-15deg);
+    pointer-events: none; /* 클릭 방해 금지 */
+}
+
+.meal-section .text-group {
+    position: relative;
+    z-index: 1;
+}
+
+.meal-section .label {
+    display: block;
+    font-size: 14px;
+    opacity: 0.9;
+    margin-bottom: 4px;
+    font-weight: 500;
+}
+
+.meal-section h2 {
+    font-size: 20px;
+    font-weight: 700;
+    margin: 0;
+}
+
+/* =========================================
+   2. Board Section (게시판)
+========================================= */
+.board-section {
+    padding: 24px;
+    background-color: #FFFFFF;
+}
+
+/* Header Part */
+.board-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    margin-bottom: 16px;
 }
 
-.card-header h3 {
-    font-size: 1.4rem;
+.board-title-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.board-title-group h2 {
+    font-size: 20px;
     font-weight: 700;
-    color: #1F2937;
+    margin: 0;
+    color: #333D4B;
 }
 
-.arrow-btn {
-    font-size: 1.2rem;
-    color: #9CA3AF;
-    transition: transform 0.2s;
+.post-count-badge {
+    background-color: #FFF0F2;
+    color: #E93E4F;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 6px;
+    border-radius: 6px;
 }
 
-.dashboard-card:hover .arrow-btn {
-    transform: translateX(5px);
-    color: var(--primary);
-}
-
-/* === 카드 1: 급식 전용 === */
-.meal-card {
-    background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
-}
-
-.card-bg-icon {
-    position: absolute;
-    bottom: -10px;
-    right: -10px;
-    font-size: 8rem;
-    opacity: 0.05;
-    z-index: 1;
-    pointer-events: none;
-    filter: grayscale(100%);
-}
-
-.meal-preview {
-    margin-top: auto;
-}
-
-.meal-highlight {
-    font-size: 1.1rem;
+.go-icon {
+    font-size: 13px;
     font-weight: 600;
-    color: #374151;
-    margin-bottom: 0.3rem;
+    color: #8B95A1;
 }
 
-.check-text {
-    font-size: 0.9rem;
-    color: var(--primary);
-    font-weight: 500;
+.divider {
+    height: 1px;
+    background-color: #F2F4F6;
+    margin-bottom: 20px;
 }
 
-/* === 카드 2: 게시판 전용 (수정됨) === */
-.posts-widget {
-    background-color: #F9FAFB;
-    border-radius: 16px;
-    padding: 1rem;
-    flex-grow: 1;
+/* Popular Preview Area */
+.area-label {
+    font-size: 13px;
+    color: #6B7684;
+    font-weight: 600;
+    margin: 0 0 12px 0;
 }
 
-.post-list {
-    list-style: none;
+.preview-list {
     display: flex;
     flex-direction: column;
-    gap: 0.8rem;
+    gap: 12px;
 }
 
-.post-item {
+.preview-item {
     display: flex;
-    justify-content: space-between; /* 제목과 정보(작성자+시간) 양끝 정렬 */
     align-items: center;
-    font-size: 0.95rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px dashed #E5E7EB;
-    gap: 1rem; /* 제목과 정보 사이 최소 간격 */
+    padding: 12px;
+    background-color: #F9FAFB;
+    border-radius: 16px;
+    transition: background-color 0.2s;
 }
 
-.post-item:last-child {
-    border-bottom: none;
-    padding-bottom: 0;
+.preview-item:active {
+    background-color: #F2F4F6; /* 인기글 클릭 시 피드백 */
 }
 
-.post-title {
-    color: #4B5563;
-    font-weight: 500;
+.rank {
+    width: 24px;
+    height: 24px;
+    /* 여기를 한 가지 색상(기본 파란색)으로 통일했습니다 */
+    background-color: #3182F6;
+    color: white;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
 
-    /* 제목 길어지면 ... 처리 */
+/* 이전에 있던 개별 색상 지정 코드 삭제됨 */
+
+.info {
+    flex: 1;
+    overflow: hidden;
+}
+
+.p-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0 0 4px 0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    flex: 1; /* 남은 공간 모두 차지 */
+    color: #333D4B;
 }
 
-/* 작성자와 시간 감싸는 컨테이너 */
-.post-meta {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    font-size: 0.8rem;
-    color: #9CA3AF;
-    flex-shrink: 0; /* 공간 좁아져도 줄어들지 않음 */
-}
-
-.post-author {
-    color: #6B7280; /* 시간보다 조금 더 진하게 */
-    font-weight: 500;
-    max-width: 60px; /* 작성자 이름 너무 길면 제한 */
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.post-divider {
-    color: #E5E7EB; /* 아주 연한 구분선 */
-    font-size: 0.7rem;
-}
-
-/* === 모바일 반응형 === */
-@media (max-width: 768px) {
-    .main-container {
-        padding: 1.5rem 1rem;
-    }
-
-    .dashboard-grid {
-        grid-template-columns: 1fr;
-        gap: 1.2rem;
-    }
-
-    .welcome-header h2 {
-        font-size: 1.6rem;
-    }
-
-    .dashboard-card {
-        padding: 1.5rem;
-    }
-
-    .card-bg-icon {
-        font-size: 6rem;
-    }
-
-    /* 모바일에서는 작성자 이름 길면 더 짧게 */
-    .post-author {
-        max-width: 50px;
-    }
+.p-meta {
+    font-size: 12px;
+    color: #8B95A1;
 }
