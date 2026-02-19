@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import {MainPage} from './components/MainPage';
 import {Header} from "./components/Header.jsx";
 import {PostListPage} from "./components/PostListPage.jsx";
+import {PostDetailPage} from './components/PostDetailPage'
 
 
 
@@ -12,10 +13,7 @@ function App() {
             {/*상단바*/}
             <Header />
 
-
             <Routes>
-
-
 
                     {/*//로그인 안하면 여기로 보내기*/}
                     {/*//여기서 로그인 하면 메인페이지로 보내기*/}
@@ -23,18 +21,16 @@ function App() {
 
                     {/*// 로그인만 한사람 여기로 보내기*/}
                     {/*//로그인 안한사람 여기들어오면 로그인페이지로 튕기기*/}
-                    <Route path="/main" element={<MainPage />} />
+                    <Route path="/" element={<MainPage />} />
 
                     {/*//글목록 라우트*/}
-                    <Route path="/postListPage" element={<PostListPage />} />
+                    <Route path="/board" element={<PostListPage />} />
 
-                    {/*//+ post 라우트는 /post/postID로 처리예정?*/}
+                    {/*글목록 페이지에서 넘겨야함*/}
+                    <Route path="/post/:postId" element={<PostDetailPage  />} />
 
                     {/*//급식확인 라우트*/}
                     {/*// <Route path="/meal" element={<??? />} />*/}
-
-
-
 
             </Routes>
         </BrowserRouter>
