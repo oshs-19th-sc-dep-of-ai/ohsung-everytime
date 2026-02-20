@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS Posts (
     author_id CHAR(7) NOT NULL,
     title VARCHAR(255) NOT NULL,
     content TEXT NOT NULL,
+    is_anonymous BOOLEAN DEFAULT FALSE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (author_id) REFERENCES Students (student_id) ON DELETE CASCADE
 );
@@ -54,4 +55,15 @@ CREATE TABLE IF NOT EXISTS CommentHistory (
     new_content TEXT NOT NULL,
     changed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (comment_id) REFERENCES Comments (comment_id) ON DELETE CASCADE
+);
+
+-- FCM 디바이스 토큰 테이블 (Firebase Push Notification)
+CREATE TABLE IF NOT EXISTS fcm_tokens (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id CHAR(7) NOT NULL,
+    token VARCHAR(255) NOT NULL UNIQUE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_fcm_user_id (user_id),
+    FOREIGN KEY (user_id) REFERENCES Students (student_id) ON DELETE CASCADE
 );

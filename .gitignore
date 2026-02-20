@@ -3,3 +3,6 @@ __pycache__/
 backend/flask_session/
 .idea/
 docker-compose.yml
+
+# Firebase 서비스 계정 키 (절대 Git에 올리지 마세요!)
+backend/firebase_credentials.json

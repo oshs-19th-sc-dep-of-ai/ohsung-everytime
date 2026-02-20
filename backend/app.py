@@ -8,6 +8,10 @@ from src.utils.config_util import ConfigManager as Config
 from src.routes.auth import auth_bp
 from src.routes.comments import comments_bp
 from src.routes.meal import meal_bp
+from src.routes.notifications import notifications_bp
+from src.routes.posts import posts_bp
+
+from src.utils.firebase_util import FirebaseManager
 
 app = Flask(__name__)
 app.json.sort_keys = False
@@ -38,10 +42,15 @@ DatabaseManager().connect(
     password = Config().get()["Database"]["Password"],
 )
 
+# Firebase Admin SDK 초기화 (FCM 푸시 알림)
+FirebaseManager().initialize()
+
 # 블루프린트 등록
 app.register_blueprint(auth_bp)           # 로그인 & 로그아웃
-app.register_blueprint(comments_bp) # 댓글 (prefix 추가)
-app.register_blueprint(meal_bp)
+app.register_blueprint(comments_bp)       # 댓글
+app.register_blueprint(meal_bp)           # 급식
+app.register_blueprint(notifications_bp)  # FCM 토큰 관리
+app.register_blueprint(posts_bp)          # 게시물
 
 if __name__ == '__main__':
     try:
