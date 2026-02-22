@@ -1,10 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
+import axios from 'axios'; // axios 임포트 추가
 import './PostListPage.css';
 
 // =========================================
 // 🔧 유틸리티: 상대 시간 계산 (분/시간/일/달/년)
 // =========================================
 function formatTimeAgo(dateString) {
+    if (!dateString) return "";
     const date = new Date(dateString);
     const now = new Date();
     const diff = (now - date) / 1000; // 초 단위 차이
@@ -36,29 +38,37 @@ export function PostListPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [sortOrder, setSortOrder] = useState('latest');
 
+    // 🌟 API 연동: 기존 목데이터(Mock Data) 생성 로직을 axios 호출로 변경
     useEffect(() => {
-        // 테스트 데이터 생성 (시간 차이를 다양하게 설정)
-        const mockPosts = Array.from({ length: 50 }, (_, i) => {
-            const now = new Date();
-            // i가 커질수록 더 과거의 시간으로 설정 (테스트용)
-            // 0~5: 분 단위, 6~15: 시간 단위, 16~: 일 단위
-            let pastTime;
-            if (i < 5) pastTime = new Date(now.getTime() - i * 1000 * 60 * 5); // 5분씩 차이
-            else if (i < 15) pastTime = new Date(now.getTime() - i * 1000 * 60 * 60); // 1시간씩 차이
-            else pastTime = new Date(now.getTime() - i * 1000 * 60 * 60 * 24); // 1일씩 차이
+        const fetchPosts = async () => {
+            try {
+                // 백엔드 기본 주소 (환경에 맞게 수정)
+                const API_BASE_URL = 'http://localhost:5000';
 
-            return {
-                id: i + 1,
-                title: i % 3 === 0 ? `급식 메뉴 추천좀요 ${i + 1}` : `수학 수행평가 범위 ${i + 1}`,
-                content: `내용 미리보기입니다. ${i + 1}`,
-                likes: i === 49 ? 120 : (i === 48 ? 110 : Math.floor(Math.random() * 60)),
-                commentCount: Math.floor(Math.random() * 20),
-                author: `익명${i + 1}`,
-                createdAt: pastTime.toISOString() // 과거 시간 입력
-            };
-        }).reverse(); // 최신순 정렬
+                // 프론트에서 검색/정렬을 직접 처리하고 있으므로 limit을 넉넉히(예: 100개) 가져옵니다.
+                const response = await axios.get(`${API_BASE_URL}/posts`, {
+                    params: { page: 1, limit: 100 },
+                    withCredentials: true // 세션 쿠키 포함 필수
+                });
 
-        setPosts(mockPosts);
+                // 백엔드의 필드명을 프론트엔드에서 쓰던 필드명으로 매핑 변환
+                const fetchedPosts = response.data.posts.map(post => ({
+                    id: post.id,
+                    title: post.title,
+                    content: post.content_preview || "내용이 없습니다.",
+                    likes: post.likes_count || 0,
+                    commentCount: post.comments_count || 0,
+                    author: post.is_anonymous ? '익명' : (post.author_name || '알 수 없음'),
+                    createdAt: post.created_at
+                }));
+
+                setPosts(fetchedPosts);
+            } catch (error) {
+                console.error('게시글 목록을 불러오는 중 오류 발생:', error);
+            }
+        };
+
+        fetchPosts();
     }, []);
 
     // 1. 👑 최상위 HOT 게시글 (Top N)
