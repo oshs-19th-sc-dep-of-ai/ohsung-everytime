@@ -25,7 +25,6 @@ def fetch_meal(meal_type, date):
             meals = data['mealServiceDietInfo'][1]['row']
             filtered = [
                 {
-                    '학교명': meal['SCHUL_NM'],
                     '급식일자': meal['MLSV_YMD'],
                     '메뉴': meal['DDISH_NM'].replace('<br/>', '\n'),
                     '칼로리': meal['CAL_INFO'],
