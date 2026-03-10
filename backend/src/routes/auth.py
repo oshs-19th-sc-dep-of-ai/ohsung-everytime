@@ -37,21 +37,21 @@ def login():
         student = student[0]
         student_id, student_name, is_admin = student
 
-        # 공통: 세션에 기본 사용자 정보 저장(호환용)
+        # 세션 사용 사용자 정보 저장
         session['student_id'] = student_id
         session['student_name'] = student_name
         session['session_student_id'] = student_id  # 다른 라우트 호환용
         session['is_admin'] = bool(is_admin)
 
         if is_admin:
-            # 관리자 키도 명시적으로 설정 (admin 전용 라우트 가드 통과)
+            # 관리자 키 명시적 설정
             session['admin_id'] = student_id
             session['admin_name'] = student_name
 
             return jsonify({
                 "message": "관리자 로그인 성공!",
-                "status": "admin",        # 기존 클라이언트 호환
-                "is_admin": True,         # 프론트 분기용(중요)
+                "status": "admin", # 기존 클라이언트 호환
+                "is_admin": True,
                 "admin_id": student_id,
                 "student_id": student_id,
                 "student_name": student_name
@@ -61,7 +61,7 @@ def login():
             return jsonify({
                 "message": "로그인 성공!",
                 "status": "success",
-                "is_admin": False,        # 프론트 분기용
+                "is_admin": False,
                 "student_id": student_id,
                 "student_name": student_name
             }), 200
@@ -89,6 +89,6 @@ def check_session():
         "student_id": session.get("student_id"),
         "student_name": session.get("student_name"),
         "admin_id": session.get("admin_id"),
-        "is_admin": bool(session.get("is_admin")),  # ← 프론트에서 분기하기 쉽도록 포함
+        "is_admin": bool(session.get("is_admin")),
         "status": "success" if logged else "unauthorized"
     }), 200
