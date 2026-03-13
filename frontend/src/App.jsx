@@ -3,6 +3,8 @@ import {MainPage} from './components/MainPage';
 import {Header} from "./components/Header.jsx";
 import {PostListPage} from "./components/PostListPage.jsx";
 import {PostDetailPage} from './components/PostDetailPage'
+import MealPage from './components/meal.jsx';
+import {PostWritePage} from './components/PostWritePage.jsx'
 
 
 
@@ -30,7 +32,14 @@ function App() {
                     <Route path="/post/:postId" element={<PostDetailPage  />} />
 
                     {/*//급식확인 라우트*/}
-                    {/*// <Route path="/meal" element={<??? />} />*/}
+                    <Route path="/meal" element={<MealPage  />} />
+
+
+                    {/*글쓰기 페이지 라우트*/}
+                    <Route path="/postWrite" element={<PostWritePage  />} />
+
+
+
 
             </Routes>
         </BrowserRouter>
