@@ -9,14 +9,14 @@ import { useState } from "react";
 import "./login.css";
 import MealPage from "./meal";
 
-const API_URL = "http://localhost:5000";
+import { API_BASE_URL } from "../config";
 
 const isLoggedIn = () => {
   return localStorage.getItem("login") === "true";
 };
 
 //로그인 컴포넌트
-function Login() {
+export function Login() {
   const navigate = useNavigate();
   const [form, setForm] = useState({ student_id: "", password: "" });
   const [loading, setLoading] = useState(false);
@@ -36,7 +36,7 @@ function Login() {
       setLoading(true);
       setError("");
 
-      const res = await fetch(`${API_URL}/login`, {
+      const res = await fetch(`${API_BASE_URL}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -58,7 +58,7 @@ function Login() {
       localStorage.setItem("status", data.status);
       localStorage.setItem("student_id", data.student_id);
 
-      navigate("/main");
+      navigate("/");
     } catch {
       setError("서버와 연결할 수 없습니다.");
     } finally {
@@ -111,7 +111,7 @@ function Main() {
 
   const logout = async () => {
     try {
-      await fetch(`${API_URL}/logout`, {
+      await fetch(`${API_BASE_URL}/logout`, {
         method: "POST",
         credentials: "include",
       });

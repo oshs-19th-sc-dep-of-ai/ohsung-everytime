@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import "./meal.css";
 
-const BASE_URL = "http://localhost:5000";
+import { API_BASE_URL } from "../config";
 
 //유틸 함수
 const formatDate = (date) => {
@@ -140,7 +140,7 @@ export default function MealPage() {
       setLunchError(false);
       setLunch(null);
       try {
-        const res = await fetch(`${BASE_URL}/meal_lunch?date=${dateStr}`);
+        const res = await fetch(`${API_BASE_URL}/meal_lunch?date=${dateStr}`);
         if (!res.ok) throw new Error();
         setLunch(await res.json());
       } catch {
@@ -155,7 +155,7 @@ export default function MealPage() {
       setDinnerError(false);
       setDinner(null);
       try {
-        const res = await fetch(`${BASE_URL}/meal_dinner?date=${dateStr}`);
+        const res = await fetch(`${API_BASE_URL}/meal_dinner?date=${dateStr}`);
         if (!res.ok) throw new Error();
         setDinner(await res.json());
       } catch {

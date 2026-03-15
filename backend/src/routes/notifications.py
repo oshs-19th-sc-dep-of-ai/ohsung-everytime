@@ -2,7 +2,7 @@ from flask import Blueprint, request, session, jsonify
 
 from src.utils.database_util import DatabaseManager
 
-notifications_bp = Blueprint("notifications", __name__, url_prefix="/api/notifications")
+notifications_bp = Blueprint("notifications", __name__, url_prefix="/notifications")
 
 
 @notifications_bp.route("/register-token", methods=["POST"])
@@ -18,7 +18,7 @@ def register_token():
         400: token 필드 누락
         401: 로그인 필요
     """
-    user_id = session.get("user_id")
+    user_id = session.get("student_id")
     if not user_id:
         return jsonify({"error": "로그인이 필요합니다."}), 401
 
@@ -29,13 +29,14 @@ def register_token():
         return jsonify({"error": "token 필드가 필요합니다."}), 400
 
     db = DatabaseManager()
-    db.execute(
+    db.query(
         """
         INSERT INTO fcm_tokens (user_id, token)
-        VALUES (%s, %s)
+        VALUES (%(user_id)s, %(token)s)
         ON DUPLICATE KEY UPDATE user_id = VALUES(user_id), updated_at = CURRENT_TIMESTAMP
         """,
-        (user_id, token),
+        user_id=user_id,
+        token=token,
     )
     db.commit()
 
@@ -55,7 +56,7 @@ def unregister_token():
         400: token 필드 누락
         401: 로그인 필요
     """
-    user_id = session.get("user_id")
+    user_id = session.get("student_id")
     if not user_id:
         return jsonify({"error": "로그인이 필요합니다."}), 401
 
@@ -66,9 +67,9 @@ def unregister_token():
         return jsonify({"error": "token 필드가 필요합니다."}), 400
 
     db = DatabaseManager()
-    db.execute(
-        "DELETE FROM fcm_tokens WHERE user_id = %s AND token = %s",
-        (user_id, token),
+    db.query(
+        "DELETE FROM fcm_tokens WHERE user_id = %(user_id)s AND token = %(token)s",
+        user_id=user_id, token=token,
     )
     db.commit()
 

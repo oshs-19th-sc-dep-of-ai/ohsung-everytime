@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import axios from 'axios'; // axios 임포트 추가
+import { API_BASE_URL } from "../config";
 import './PostListPage.css';
 
 // =========================================
@@ -42,8 +43,6 @@ export function PostListPage() {
     useEffect(() => {
         const fetchPosts = async () => {
             try {
-                // 백엔드 기본 주소 (환경에 맞게 수정)
-                const API_BASE_URL = 'http://localhost:5000';
 
                 // 프론트에서 검색/정렬을 직접 처리하고 있으므로 limit을 넉넉히(예: 100개) 가져옵니다.
                 const response = await axios.get(`${API_BASE_URL}/posts`, {

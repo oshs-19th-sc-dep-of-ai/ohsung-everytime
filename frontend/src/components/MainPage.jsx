@@ -1,7 +1,57 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { API_BASE_URL } from '../config';
+import { messaging } from '../firebase';
+import { getToken } from 'firebase/messaging';
 import './MainPage.css';
 
 export function MainPage() {
+
+    useEffect(() => {
+        const requestPermission = async () => {
+            // Check if user is logged in
+            if (localStorage.getItem("login") !== "true") {
+                console.log('User not logged in, skipping token registration.');
+                return;
+            }
+
+            console.log('Requesting permission...');
+            try {
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    console.log('Notification permission granted.');
+                    // Get FCM Token
+                    // NOTE: You need to provide your real VAPID key here from Firebase Console
+                    // Cloud Messaging -> Web Push certificates -> Key pair
+                    const token = await getToken(messaging);
+                    if (token) {
+                        console.log('FCM Token:', token);
+                        // Send token to backend
+                        const response = await fetch(`${API_BASE_URL}/notifications/register-token`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ token }),
+                            credentials: 'include', // Ensure session cookie is sent
+                        });
+                        if (response.ok) {
+                            console.log('FCM token registered successfully on the server.');
+                        } else {
+                            console.error('Failed to register FCM token on the server.');
+                        }
+                    } else {
+                        console.log('No registration token available. Request permission to generate one.');
+                    }
+                } else {
+                    console.log('Unable to get permission to notify.');
+                }
+            } catch (error) {
+                console.error('An error occurred while retrieving token:', error);
+            }
+        };
+
+        requestPermission();
+    }, []);
 
     // [Data] 게시글 데이터 (테스트용)
     const [posts] = useState([

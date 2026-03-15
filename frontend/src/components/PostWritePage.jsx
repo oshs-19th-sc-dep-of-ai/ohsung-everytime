@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_BASE_URL } from "../config";
 import './PostWritePage.css';
 
 export const PostWritePage = () => {
@@ -27,7 +28,7 @@ export const PostWritePage = () => {
         }
 
         try {
-            const response = await axios.post('http://localhost:5000/posts', {
+            const response = await axios.post(`${API_BASE_URL}/posts`, {
                 title: title,
                 content: content,
                 is_anonymous: isAnonymous

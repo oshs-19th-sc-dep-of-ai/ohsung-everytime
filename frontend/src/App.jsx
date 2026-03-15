@@ -4,7 +4,8 @@ import {Header} from "./components/Header.jsx";
 import {PostListPage} from "./components/PostListPage.jsx";
 import {PostDetailPage} from './components/PostDetailPage'
 import MealPage from './components/meal.jsx';
-import {PostWritePage} from './components/PostWritePage.jsx'
+import {PostWritePage} from './components/PostWritePage.jsx';
+import { Login } from './components/login.jsx';
 
 
 
@@ -19,7 +20,7 @@ function App() {
 
                     {/*//로그인 안하면 여기로 보내기*/}
                     {/*//여기서 로그인 하면 메인페이지로 보내기*/}
-                    {/*<Route path="/" element={<LoginPage />} />*/}
+                    <Route path="/login" element={<Login />} />
 
                     {/*// 로그인만 한사람 여기로 보내기*/}
                     {/*//로그인 안한사람 여기들어오면 로그인페이지로 튕기기*/}
