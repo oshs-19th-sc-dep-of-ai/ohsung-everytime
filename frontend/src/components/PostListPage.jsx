@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import axios from 'axios'; // axios 임포트 추가
+import axios from 'axios';
 import { API_BASE_URL } from "../config";
 import './PostListPage.css';
 
@@ -39,31 +39,36 @@ export function PostListPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [sortOrder, setSortOrder] = useState('latest');
 
-    // 🌟 API 연동: 기존 목데이터(Mock Data) 생성 로직을 axios 호출로 변경
+    // 🌟 API 연동
     useEffect(() => {
         const fetchPosts = async () => {
             try {
-
-                // 프론트에서 검색/정렬을 직접 처리하고 있으므로 limit을 넉넉히(예: 100개) 가져옵니다.
                 const response = await axios.get(`${API_BASE_URL}/posts`, {
                     params: { page: 1, limit: 100 },
-                    withCredentials: true // 세션 쿠키 포함 필수
+                    withCredentials: true
                 });
 
-                // 백엔드의 필드명을 프론트엔드에서 쓰던 필드명으로 매핑 변환
-                const fetchedPosts = response.data.posts.map(post => ({
-                    id: post.id,
-                    title: post.title,
-                    content: post.content_preview || "내용이 없습니다.",
-                    likes: post.likes_count || 0,
-                    commentCount: post.comments_count || 0,
-                    author: post.is_anonymous ? '익명' : (post.author_name || '알 수 없음'),
-                    createdAt: post.created_at
-                }));
+                // API 응답 구조를 명확히 탐색하고, 데이터가 존재하는지 확인하는 안전망 추가
+                if (response.data && response.data.data && response.data.data.posts) {
+                    const fetchedPosts = response.data.data.posts.map(post => ({
+                        id: post.post_id,
+                        title: post.title,
+                        content: post.content_preview || "내용이 없습니다.",
+                        // 백엔드 API에서 좋아요 기능을 제공하지 않으면 기본값 0으로 처리
+                        likes: post.likes_count || 0,
+                        commentCount: post.comment_count || 0,
+                        author: post.is_anonymous ? '익명' : (post.author_name || '알 수 없음'),
+                        createdAt: post.created_at
+                    }));
 
-                setPosts(fetchedPosts);
+                    setPosts(fetchedPosts);
+                } else {
+                    console.error("API 응답에서 게시글 데이터를 찾을 수 없습니다.", response.data);
+                    setPosts([]);
+                }
             } catch (error) {
                 console.error('게시글 목록을 불러오는 중 오류 발생:', error);
+                setPosts([]);
             }
         };
 
@@ -122,6 +127,7 @@ export function PostListPage() {
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
+                {/* 추후 라우팅(Link 또는 useNavigate)을 연결할 수 있습니다 */}
                 <button className="write-btn">✏️ 글쓰기</button>
             </div>
 
@@ -181,7 +187,6 @@ export function PostListPage() {
                                     <div className="post-meta">
                                         <div className="meta-left">
                                             <span className="author">{post.author}</span>
-                                            {/* 구분선이나 간격이 적용된 시간 표시 */}
                                             <span className="date">{formatTimeAgo(post.createdAt)}</span>
                                         </div>
                                         <div className="meta-right">
@@ -195,7 +200,7 @@ export function PostListPage() {
                             );
                         })
                     ) : (
-                        <div className="empty-state"><p>검색 결과가 없어요 🥲</p></div>
+                        <div className="empty-state"><p>게시글이 존재하지 않습니다 🥲</p></div>
                     )}
                 </div>
             </section>
