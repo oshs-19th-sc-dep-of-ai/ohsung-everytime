@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE_URL } from "../config";
 import './PostListPage.css';
@@ -10,7 +11,7 @@ function formatTimeAgo(dateString) {
     if (!dateString) return "";
     const date = new Date(dateString);
     const now = new Date();
-    const diff = (now - date) / 1000; // 초 단위 차이
+    const diff = (now - date) / 1000;
 
     if (diff < 60) return "방금 전";
     const minutes = Math.floor(diff / 60);
@@ -34,6 +35,7 @@ const POSTS_PER_PAGE = 10;
 // =========================================
 
 export function PostListPage() {
+    const navigate = useNavigate(); // 라우팅을 위한 useNavigate 훅
     const [posts, setPosts] = useState([]);
     const [currentPage, setCurrentPage] = useState(1);
     const [searchTerm, setSearchTerm] = useState("");
@@ -48,13 +50,11 @@ export function PostListPage() {
                     withCredentials: true
                 });
 
-                // API 응답 구조를 명확히 탐색하고, 데이터가 존재하는지 확인하는 안전망 추가
                 if (response.data && response.data.data && response.data.data.posts) {
                     const fetchedPosts = response.data.data.posts.map(post => ({
                         id: post.post_id,
                         title: post.title,
                         content: post.content_preview || "내용이 없습니다.",
-                        // 백엔드 API에서 좋아요 기능을 제공하지 않으면 기본값 0으로 처리
                         likes: post.likes_count || 0,
                         commentCount: post.comment_count || 0,
                         author: post.is_anonymous ? '익명' : (post.author_name || '알 수 없음'),
@@ -75,7 +75,6 @@ export function PostListPage() {
         fetchPosts();
     }, []);
 
-    // 1. 👑 최상위 HOT 게시글 (Top N)
     const topHotPosts = useMemo(() => {
         return [...posts]
             .filter(post => post.likes >= HOT_LIKE_THRESHOLD)
@@ -85,7 +84,6 @@ export function PostListPage() {
 
     const topHotIds = useMemo(() => topHotPosts.map(p => p.id), [topHotPosts]);
 
-    // 2. 리스트 필터링 및 정렬
     const processedPosts = useMemo(() => {
         let result = [...posts];
 
@@ -99,14 +97,12 @@ export function PostListPage() {
         if (sortOrder === 'popular') {
             result.sort((a, b) => b.likes - a.likes);
         } else {
-            // 최신순 (createdAt 기준 내림차순)
             result.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         }
 
         return result;
     }, [posts, searchTerm, sortOrder]);
 
-    // 페이지네이션
     const indexOfLastPost = currentPage * POSTS_PER_PAGE;
     const indexOfFirstPost = indexOfLastPost - POSTS_PER_PAGE;
     const currentPosts = processedPosts.slice(indexOfFirstPost, indexOfLastPost);
@@ -114,9 +110,13 @@ export function PostListPage() {
 
     useEffect(() => setCurrentPage(1), [searchTerm, sortOrder]);
 
+    // 게시글 클릭 시 상세 페이지로 이동하는 핸들러
+    const handlePostClick = (postId) => {
+        navigate(`/post/${postId}`);
+    };
+
     return (
         <div className="board-container">
-            {/* 툴바 */}
             <div className="board-toolbar">
                 <div className="search-box">
                     <span className="search-icon">🔍</span>
@@ -127,17 +127,26 @@ export function PostListPage() {
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
-                {/* 추후 라우팅(Link 또는 useNavigate)을 연결할 수 있습니다 */}
-                <button className="write-btn">✏️ 글쓰기</button>
+                {/* 글쓰기 버튼 클릭 시 라우팅 적용 */}
+                <button
+                    className="write-btn"
+                    onClick={() => navigate('/postWrite')}
+                >
+                    ✏️ 글쓰기
+                </button>
             </div>
 
-            {/* 👑 상단 고정 HOT 섹션 */}
             {topHotPosts.length > 0 && (
                 <section className="hot-section">
                     <h3 className="section-title">🔥 실시간 HOT 게시글</h3>
                     <div className="hot-grid">
                         {topHotPosts.map(post => (
-                            <div key={post.id} className="hot-card-top">
+                            <div
+                                key={post.id}
+                                className="hot-card-top"
+                                onClick={() => handlePostClick(post.id)}
+                                style={{ cursor: 'pointer' }}
+                            >
                                 <div className="hot-badge-top">HOT</div>
                                 <h4 className="post-title">{post.title}</h4>
                                 <div className="post-meta-simple">
@@ -150,7 +159,6 @@ export function PostListPage() {
                 </section>
             )}
 
-            {/* 📝 게시글 리스트 */}
             <section className="general-section">
                 <div className="list-header">
                     <h3 className="section-title">전체 게시글</h3>
@@ -175,7 +183,12 @@ export function PostListPage() {
                             const cardClassName = `post-card ${isRealHot && isLatestMode ? 'hot-highlight' : ''}`;
 
                             return (
-                                <div key={post.id} className={cardClassName}>
+                                <div
+                                    key={post.id}
+                                    className={cardClassName}
+                                    onClick={() => handlePostClick(post.id)}
+                                    style={{ cursor: 'pointer' }}
+                                >
                                     <h4 className="post-title">
                                         {isRealHot && <span className="badge badge-hot">HOT</span>}
                                         {isPopular && <span className="badge badge-popular">인기</span>}
@@ -205,7 +218,6 @@ export function PostListPage() {
                 </div>
             </section>
 
-            {/* 페이지네이션 */}
             {totalPages > 0 && (
                 <div className="pagination">
                     <button onClick={() => setCurrentPage(p => p - 1)} disabled={currentPage === 1} className="page-btn">&lt;</button>
