@@ -47,6 +47,16 @@ CREATE TABLE IF NOT EXISTS Posts (
     FOREIGN KEY (author_id) REFERENCES Students (student_id) ON DELETE CASCADE
 );
 
+-- 게시글 좋아요 테이블 (PostLikes)
+CREATE TABLE IF NOT EXISTS PostLikes (
+    post_id INT NOT NULL,
+    student_id CHAR(7) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (post_id, student_id),
+    FOREIGN KEY (post_id) REFERENCES Posts (post_id) ON DELETE CASCADE,
+    FOREIGN KEY (student_id) REFERENCES Students (student_id) ON DELETE CASCADE
+);
+
 -- 댓글 변경 이력 테이블 (CommentHistory)
 CREATE TABLE IF NOT EXISTS CommentHistory (
     history_id INT AUTO_INCREMENT PRIMARY KEY,

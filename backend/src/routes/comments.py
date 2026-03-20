@@ -132,25 +132,25 @@ def like_comment(comment_id):
     db = DatabaseManager()
     
     # 이미 좋아요 했는지 확인 (토글 기능)
-    check_sql = "SELECT 1 FROM CommentLikes WHERE comment_id = %s AND student_id = %s"
-    existing = db.query(check_sql, comment_id, student_id).result
+    check_sql = "SELECT 1 FROM CommentLikes WHERE comment_id = %(comment_id)s AND student_id = %(student_id)s"
+    existing = db.query(check_sql, comment_id=comment_id, student_id=student_id).result
     
     if existing:
         # 좋아요 취소
-        db.query("DELETE FROM CommentLikes WHERE comment_id = %s AND student_id = %s", comment_id, student_id)
+        db.query("DELETE FROM CommentLikes WHERE comment_id = %(comment_id)s AND student_id = %(student_id)s", comment_id=comment_id, student_id=student_id)
         msg = "좋아요가 취소되었습니다."
         liked = False
     else:
         # 좋아요 추가
-        db.query("INSERT INTO CommentLikes (comment_id, student_id) VALUES (%s, %s)", comment_id, student_id)
+        db.query("INSERT INTO CommentLikes (comment_id, student_id) VALUES (%(comment_id)s, %(student_id)s)", comment_id=comment_id, student_id=student_id)
         msg = "좋아요를 눌렀습니다."
         liked = True
         
     db.commit()
     
     # 현재 좋아요 수 반환
-    count_sql = "SELECT COUNT(*) FROM CommentLikes WHERE comment_id = %s"
-    count = db.query(count_sql, comment_id).result[0][0]
+    count_sql = "SELECT COUNT(*) FROM CommentLikes WHERE comment_id = %(comment_id)s"
+    count = db.query(count_sql, comment_id=comment_id).result[0][0]
     
     return jsonify({
         "status": "success",

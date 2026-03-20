@@ -35,14 +35,17 @@ def get_posts():
             p.author_id,
             s.student_name,
             p.is_anonymous,
-            (SELECT COUNT(*) FROM Comments c WHERE c.post_id = p.post_id AND c.is_deleted = FALSE) AS comment_count
+            (SELECT COUNT(*) FROM Comments c WHERE c.post_id = p.post_id AND c.is_deleted = FALSE) AS comment_count,
+            (SELECT COUNT(*) FROM PostLikes pl WHERE pl.post_id = p.post_id) AS likes_count,
+            EXISTS(SELECT 1 FROM PostLikes pl WHERE pl.post_id = p.post_id AND pl.student_id = %(current_user)s) AS is_liked
         FROM Posts p
         JOIN Students s ON p.author_id = s.student_id
         ORDER BY p.created_at DESC
         LIMIT %(limit)s OFFSET %(offset)s
     """
 
-    rows = db.query(sql, limit=limit, offset=offset).result
+    current_user = session.get('student_id', '')
+    rows = db.query(sql, limit=limit, offset=offset, current_user=current_user).result
 
     posts = []
     for row in rows:
@@ -59,6 +62,8 @@ def get_posts():
             "author_name":     "익명" if is_anon else row[5],
             "is_anonymous":    is_anon,
             "comment_count":   row[7],
+            "likes_count":     row[8],
+            "is_liked":        bool(row[9]),
         })
 
     return jsonify({
@@ -91,19 +96,21 @@ def get_post(post_id):
             p.author_id,
             s.student_name,
             p.is_anonymous,
-            (SELECT COUNT(*) FROM Comments c WHERE c.post_id = p.post_id AND c.is_deleted = FALSE) AS comment_count
+            (SELECT COUNT(*) FROM Comments c WHERE c.post_id = p.post_id AND c.is_deleted = FALSE) AS comment_count,
+            (SELECT COUNT(*) FROM PostLikes pl WHERE pl.post_id = p.post_id) AS likes_count,
+            EXISTS(SELECT 1 FROM PostLikes pl WHERE pl.post_id = p.post_id AND pl.student_id = %(current_user)s) AS is_liked
         FROM Posts p
         JOIN Students s ON p.author_id = s.student_id
         WHERE p.post_id = %(post_id)s
     """
 
-    rows = db.query(sql, post_id=post_id).result
+    current_user = session.get('student_id', '')
+    rows = db.query(sql, post_id=post_id, current_user=current_user).result
 
     if not rows:
         return jsonify({"status": "error", "message": "게시물을 찾을 수 없습니다."}), 404
 
     row = rows[0]
-    current_user = session.get('student_id', '')
     is_anon = bool(row[6])
     real_author_id = row[4]
 
@@ -116,7 +123,10 @@ def get_post(post_id):
         "author_name":   "익명" if is_anon else row[5],
         "is_anonymous":  is_anon,
         "comment_count": row[7],
+        "likes_count":   row[8],
+        "is_liked":      bool(row[9]),
         "is_mine":       (current_user == real_author_id) if current_user else False,
+
     }
 
     return jsonify({
@@ -172,3 +182,45 @@ def create_post():
 
     except Exception as e:
         return jsonify({"status": "error", "message": f"서버 오류: {str(e)}"}), 500
+
+# ────────────────────────────────────────────
+# 게시물 좋아요
+# POST /posts/<post_id>/like
+# ────────────────────────────────────────────
+@posts_bp.route('/posts/<int:post_id>/like', methods=['POST'])
+def like_post(post_id):
+    if 'student_id' not in session:
+        return jsonify({"status": "error", "message": "로그인이 필요합니다."}), 401
+        
+    student_id = session['student_id']
+    db = DatabaseManager()
+    
+    # 이미 좋아요 했는지 확인 (토글 기능)
+    check_sql = "SELECT 1 FROM PostLikes WHERE post_id = %(post_id)s AND student_id = %(student_id)s"
+    existing = db.query(check_sql, post_id=post_id, student_id=student_id).result
+    
+    if existing:
+        # 좋아요 취소
+        db.query("DELETE FROM PostLikes WHERE post_id = %(post_id)s AND student_id = %(student_id)s", post_id=post_id, student_id=student_id)
+        msg = "좋아요가 취소되었습니다."
+        liked = False
+    else:
+        # 좋아요 추가
+        db.query("INSERT INTO PostLikes (post_id, student_id) VALUES (%(post_id)s, %(student_id)s)", post_id=post_id, student_id=student_id)
+        msg = "좋아요를 눌렀습니다."
+        liked = True
+        
+    db.commit()
+    
+    # 현재 좋아요 수 반환
+    count_sql = "SELECT COUNT(*) FROM PostLikes WHERE post_id = %(post_id)s"
+    count = db.query(count_sql, post_id=post_id).result[0][0]
+    
+    return jsonify({
+        "status": "success",
+        "message": msg,
+        "data": {
+            "likes_count": count,
+            "is_liked": liked
+        }
+    })
