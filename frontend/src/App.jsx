@@ -1,47 +1,101 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import {MainPage} from './components/MainPage';
-import {Header} from "./components/Header.jsx";
-import {PostListPage} from "./components/PostListPage.jsx";
-import {PostDetailPage} from './components/PostDetailPage'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { MainPage } from './components/MainPage';
+import { Header } from "./components/Header.jsx";
+import { PostListPage } from "./components/PostListPage.jsx";
+import { PostDetailPage } from './components/PostDetailPage';
 import MealPage from './components/meal.jsx';
-import {PostWritePage} from './components/PostWritePage.jsx';
+import { PostWritePage } from './components/PostWritePage.jsx';
 import { Login } from './components/login.jsx';
 
+// ==========================================
+// 🔧 로그인 여부 확인 및 라우트 가드 설정
+// ==========================================
+const isLoggedIn = () => {
+    return localStorage.getItem("login") === "true";
+};
 
+// 로그인이 필요한 페이지 접근 제어
+function ProtectedRoute({ children }) {
+    if (!isLoggedIn()) {
+        return <Navigate to="/login" replace />;
+    }
+    return children;
+}
+
+// 이미 로그인한 사용자가 /login 페이지 접근 시 메인으로 돌려보냄
+function PublicRoute({ children }) {
+    if (isLoggedIn()) {
+        return <Navigate to="/" replace />;
+    }
+    return children;
+}
+// ==========================================
 
 function App() {
     return (
         <BrowserRouter>
-
-            {/*상단바*/}
+            {/* 상단바 (Header 내부에서 /login 경로일 때 자동 숨김 처리됨) */}
             <Header />
 
             <Routes>
+                {/* 1. 로그인 페이지 (비로그인 상태에서만 접근 가능) */}
+                <Route
+                    path="/login"
+                    element={
+                        <PublicRoute>
+                            <Login />
+                        </PublicRoute>
+                    }
+                />
 
-                    {/*//로그인 안하면 여기로 보내기*/}
-                    {/*//여기서 로그인 하면 메인페이지로 보내기*/}
-                    <Route path="/login" element={<Login />} />
+                {/* 2. 보호되는 페이지 (로그인 상태에서만 접근 가능) */}
+                <Route
+                    path="/"
+                    element={
+                        <ProtectedRoute>
+                            <MainPage />
+                        </ProtectedRoute>
+                    }
+                />
 
-                    {/*// 로그인만 한사람 여기로 보내기*/}
-                    {/*//로그인 안한사람 여기들어오면 로그인페이지로 튕기기*/}
-                    <Route path="/" element={<MainPage />} />
+                <Route
+                    path="/board"
+                    element={
+                        <ProtectedRoute>
+                            <PostListPage />
+                        </ProtectedRoute>
+                    }
+                />
 
-                    {/*//글목록 라우트*/}
-                    <Route path="/board" element={<PostListPage />} />
+                <Route
+                    path="/post/:postId"
+                    element={
+                        <ProtectedRoute>
+                            <PostDetailPage />
+                        </ProtectedRoute>
+                    }
+                />
 
-                    {/*글목록 페이지에서 넘겨야함*/}
-                    <Route path="/post/:postId" element={<PostDetailPage  />} />
+                <Route
+                    path="/meal"
+                    element={
+                        <ProtectedRoute>
+                            <MealPage />
+                        </ProtectedRoute>
+                    }
+                />
 
-                    {/*//급식확인 라우트*/}
-                    <Route path="/meal" element={<MealPage  />} />
+                <Route
+                    path="/postWrite"
+                    element={
+                        <ProtectedRoute>
+                            <PostWritePage />
+                        </ProtectedRoute>
+                    }
+                />
 
-
-                    {/*글쓰기 페이지 라우트*/}
-                    <Route path="/postWrite" element={<PostWritePage  />} />
-
-
-
-
+                {/* 3. 잘못된 경로나 정의되지 않은 주소로 접근 시 메인으로 이동 (권한에 따라 리다이렉트됨) */}
+                <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
         </BrowserRouter>
     );
