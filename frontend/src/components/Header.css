@@ -10,9 +10,9 @@
 
 .top-bar-content {
     width: 100%;
-    max-width: var(--max-width); /* index.css의 변수 사용 */
+    max-width: var(--max-width);
     margin: 0 auto;
-    padding: 1rem 1.5rem;
+    padding: 0.8rem 1.5rem; /* 기존보다 상하 패딩을 약간 줄여 높이 최적화 */
 
     display: flex;
     justify-content: space-between;
@@ -24,19 +24,22 @@
     font-weight: 800;
     color: var(--primary);
     letter-spacing: -0.5px;
+    margin: 0;
 }
 
-.login-button {
+/* 로그아웃 버튼 크기 축소 및 클래스명 변경 */
+.logout-button {
     background-color: var(--primary);
     color: white;
     border: none;
-    padding: 0.6rem 1.2rem;
-    border-radius: 8px;
+    padding: 0.4rem 0.8rem; /* 기존 0.6rem 1.2rem에서 크기 대폭 축소 */
+    font-size: 0.85rem; /* 폰트 크기 축소 */
+    border-radius: 6px; /* 버튼 둥글기 살짝 축소 */
     font-weight: 600;
     cursor: pointer;
     transition: background-color 0.2s;
 }
 
-.login-button:hover {
+.logout-button:hover {
     background-color: var(--primary-hover);
 }
