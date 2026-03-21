@@ -16,6 +16,7 @@ export function MainPage() {
     const [top3Posts, setTop3Posts] = useState([]);
 
     // 푸시 알림 토큰 요청 로직
+    // 푸시 알림 토큰 요청 로직
     useEffect(() => {
         const requestPermission = async () => {
             if (localStorage.getItem("login") !== "true") {
@@ -28,6 +29,9 @@ export function MainPage() {
                 if (permission === 'granted') {
                     const token = await getToken(messaging);
                     if (token) {
+                        // 백엔드 알림 토큰 등록 API의 DB 멈춤 버그를 우회하기 위해 API 호출을 차단
+                        // 에러남..?
+                        /*
                         await fetch(`${API_BASE_URL}/notifications/register-token`, {
                             method: 'POST',
                             headers: {
@@ -36,6 +40,8 @@ export function MainPage() {
                             body: JSON.stringify({ token }),
                             credentials: 'include',
                         });
+                        */
+                        console.log("알림 토큰 발급 성공 (백엔드 전송은 서버 오류 방지를 위해 비활성화됨)");
                     }
                 }
             } catch (error) {

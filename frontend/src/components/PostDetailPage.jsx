@@ -43,6 +43,7 @@ export function PostDetailPage() {
                     author: p.author_name,
                     createdAt: p.created_at,
                     likes: p.likes_count || 0,
+                    is_liked: p.is_liked || false, // 게시글 좋아요 상태 저장
                 });
             }
 
@@ -61,7 +62,7 @@ export function PostDetailPage() {
             if (axios.isCancel(err)) return;
             console.error("데이터 로딩 오류:", err);
             if (err.response?.status === 401) {
-                setError("로그인이 필요한 페이지입니다. 상단의 테스트 로그인 버튼을 눌러주세요.");
+                setError("로그인이 필요한 페이지입니다.");
             } else {
                 setError("게시글 데이터를 불러오는 데 실패했습니다.");
             }
@@ -103,13 +104,29 @@ export function PostDetailPage() {
     // ==========================================
     // 🌟 이벤트 핸들러
     // ==========================================
-    const handleDevLogin = async () => {
+
+    // 게시글 좋아요
+    const handlePostLike = async () => {
+        if (!post) return;
+
         try {
-            await axios.post(`${API_BASE_URL}/login`, { student_id: 'test001', password: '1234' }, { withCredentials: true });
-            alert("테스트 계정(test001)으로 로그인되었습니다!");
-            fetchPostAndComments();
+            // 주소 끝의 슬래시(/)를 반드시 제거해야 합니다.
+            // 백엔드 posts.py의 @posts_bp.route('/posts/<int:post_id>/like', ...)와 일치해야 함
+            const res = await axios.post(`${API_BASE_URL}/posts/${postId}/like`, {}, {
+                withCredentials: true
+            });
+
+            if (res.data.status === 'success') {
+                setPost(prev => ({
+                    ...prev,
+                    likes: res.data.data.likes_count,
+                    is_liked: res.data.data.is_liked
+                }));
+            }
         } catch (err) {
-            alert("로그인 실패. DB에 test001 계정이 생성되었는지 확인해주세요.");
+            console.error("좋아요 에러:", err.response);
+            if (err.response?.status === 401) alert("로그인이 필요합니다.");
+            else alert("게시글 좋아요 처리에 실패했습니다.");
         }
     };
 
@@ -172,11 +189,8 @@ export function PostDetailPage() {
 
     return (
         <div className="post-detail-container">
-            <div className="toolbar" style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <div className="toolbar" style={{ display: 'flex', justifyContent: 'flex-start' }}>
                 <button onClick={() => navigate(-1)} className="back-button">← 목록으로</button>
-                <button onClick={handleDevLogin} style={{ background: '#ff4b4b', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' }}>
-                    🔧 테스트 강제 로그인
-                </button>
             </div>
 
             {error ? (
@@ -190,10 +204,32 @@ export function PostDetailPage() {
                             <span className="date">{post.createdAt}</span>
                         </div>
                         <hr className="divider" />
+
                         <div className="post-content">
                             {post.content.split('\n').map((line, i) => (
                                 <React.Fragment key={i}>{line}<br /></React.Fragment>
                             ))}
+                        </div>
+
+                        {/* 게시글 좋아요 버튼 추가 */}
+                        <div className="post-actions" style={{ marginTop: '30px', textAlign: 'center' }}>
+                            <button
+                                onClick={handlePostLike}
+                                style={{
+                                    padding: '10px 20px',
+                                    borderRadius: '25px',
+                                    border: post.is_liked ? '1px solid #ff4b4b' : '1px solid #ccc',
+                                    background: post.is_liked ? '#fff0f0' : 'white',
+                                    color: post.is_liked ? '#ff4b4b' : '#333',
+                                    cursor: 'pointer',
+                                    fontSize: '15px',
+                                    fontWeight: 'bold',
+                                    transition: 'all 0.2s',
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                                }}
+                            >
+                                {post.is_liked ? '❤️' : '🤍'} 공감 {post.likes}
+                            </button>
                         </div>
                     </div>
 
