@@ -8,7 +8,7 @@ import { PostWritePage } from './components/PostWritePage.jsx';
 import { Login } from './components/login.jsx';
 
 // ==========================================
-// 🔧 로그인 여부 확인 및 라우트 가드 설정
+// 로그인 여부 확인 및 라우트 가드 설정
 // ==========================================
 const isLoggedIn = () => {
     return localStorage.getItem("login") === "true";
