@@ -105,7 +105,7 @@ def add_comment(post_id):
     
     # parent_id 유효성 검사 (옵션)
     if parent_id:
-        parent = db.query("SELECT comment_id FROM Comments WHERE comment_id = %s", parent_id).result
+        parent = db.query("SELECT comment_id FROM Comments WHERE comment_id = %(parent_id)s", parent_id=parent_id).result
         if not parent:
              return jsonify({"status": "error", "message": "원댓글이 존재하지 않습니다."}), 404
 
@@ -177,8 +177,8 @@ def update_comment(comment_id):
     db = DatabaseManager()
     
     try:
-        comment_query = "SELECT content, author_id, is_deleted FROM Comments WHERE comment_id = %s"
-        comment_res = db.query(comment_query, comment_id).result
+        comment_query = "SELECT content, author_id, is_deleted FROM Comments WHERE comment_id = %(comment_id)s"
+        comment_res = db.query(comment_query, comment_id=comment_id).result
         
         if not comment_res:
             return jsonify({"status": "error", "message": "댓글을 찾을 수 없습니다."}), 404
@@ -193,12 +193,12 @@ def update_comment(comment_id):
 
         history_sql = """
             INSERT INTO CommentHistory (comment_id, prev_content, new_content)
-            VALUES (%s, %s, %s)
+            VALUES (%(comment_id)s, %(prev_content)s, %(new_content)s)
         """
-        db.query(history_sql, comment_id, old_comment[0], new_content)
+        db.query(history_sql, comment_id=comment_id, prev_content=old_comment[0], new_content=new_content)
         
-        update_sql = "UPDATE Comments SET content = %s WHERE comment_id = %s"
-        db.query(update_sql, new_content, comment_id)
+        update_sql = "UPDATE Comments SET content = %(new_content)s WHERE comment_id = %(comment_id)s"
+        db.query(update_sql, new_content=new_content, comment_id=comment_id)
         
         db.commit()
         
@@ -218,10 +218,10 @@ def get_comment_history(comment_id):
         history_sql = """
             SELECT prev_content, new_content, changed_at 
             FROM CommentHistory 
-            WHERE comment_id = %s 
+            WHERE comment_id = %(comment_id)s 
             ORDER BY changed_at DESC
         """
-        rows = db.query(history_sql, comment_id).result
+        rows = db.query(history_sql, comment_id=comment_id).result
         
         history_list = []
         for row in rows:
