@@ -10,6 +10,7 @@ from src.routes.comments import comments_bp
 from src.routes.meal import meal_bp
 from src.routes.notifications import notifications_bp
 from src.routes.posts import posts_bp
+from src.routes.admin import admin_bp
 
 from src.utils.firebase_util import FirebaseManager
 
@@ -51,6 +52,7 @@ app.register_blueprint(comments_bp)       # 댓글
 app.register_blueprint(meal_bp)           # 급식
 app.register_blueprint(notifications_bp)  # FCM 토큰 관리
 app.register_blueprint(posts_bp)          # 게시물
+app.register_blueprint(admin_bp)          # 관리자 전용 기능
 
 if __name__ == '__main__':
     try:
