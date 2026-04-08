@@ -18,7 +18,14 @@ app = Flask(__name__)
 app.json.sort_keys = False
 
 # 프론트엔드와 세션 유지 가능하게 설정 (프론트엔드에서 꼭 withCredentials: true 확인!)
-ALLOWED_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:5173"]
+ALLOWED_ORIGINS = [
+    "http://localhost:5173", 
+    "http://127.0.0.1:5173", 
+    "http://localhost:3000", 
+    "http://127.0.0.1:3000",
+    "http://192.168.45.119:3000",
+    "http://192.168.45.119:5173"
+]
 CORS(app, supports_credentials=True, resources={r"/*": {"origins": ALLOWED_ORIGINS}})
 Config().read_file("config.json")
 

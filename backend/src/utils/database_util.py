@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Any, List, Optional, Dict
 import pymysql
+import threading
 
 @dataclass
 class QueryResult:
@@ -24,6 +25,7 @@ class DatabaseManager(metaclass=__DatabaseManager):
         self.db_conn: Optional[pymysql.connections.Connection] = None
         self._conn_kwargs: Optional[Dict[str, Any]] = None
         self.cursor = None  # 호환용
+        self._lock = threading.RLock()
 
     def connect(self, host: str, username: str, password: str) -> None:
         self._conn_kwargs = dict(
@@ -64,19 +66,20 @@ class DatabaseManager(metaclass=__DatabaseManager):
         """
         끊김(InterfaceError/OperationalError) 발생 시 1회 재연결 후 재시도
         """
-        self._ensure_conn()
-        try:
-            with self.db_conn.cursor() as cur:
-                affected = cur.execute(sql, params)
-                rows = cur.fetchall()
-            return QueryResult(affected, rows)
-        except (pymysql.err.InterfaceError, pymysql.err.OperationalError):
-            # 재연결 후 한 번 더
-            self._reconnect()
-            with self.db_conn.cursor() as cur:
-                affected = cur.execute(sql, params)
-                rows = cur.fetchall()
-            return QueryResult(affected, rows)
+        with self._lock:
+            self._ensure_conn()
+            try:
+                with self.db_conn.cursor() as cur:
+                    affected = cur.execute(sql, params)
+                    rows = cur.fetchall()
+                return QueryResult(affected, rows)
+            except (pymysql.err.InterfaceError, pymysql.err.OperationalError):
+                # 재연결 후 한 번 더
+                self._reconnect()
+                with self.db_conn.cursor() as cur:
+                    affected = cur.execute(sql, params)
+                    rows = cur.fetchall()
+                return QueryResult(affected, rows)
 
     def query(self, sql: str, **kwargs) -> QueryResult:
         """
@@ -97,16 +100,18 @@ class DatabaseManager(metaclass=__DatabaseManager):
         return self._exec_with_retry(sql, params)
 
     def commit(self) -> None:
-        if self.db_conn:
-            self.db_conn.commit()
+        with self._lock:
+            if self.db_conn:
+                self.db_conn.commit()
 
     def close(self) -> None:
-        if self.db_conn:
-            try:
-                self.db_conn.close()
-            finally:
-                self.db_conn = None
-                self.cursor = None
+        with self._lock:
+            if self.db_conn:
+                try:
+                    self.db_conn.close()
+                finally:
+                    self.db_conn = None
+                    self.cursor = None
 
     def fetch_all(self, sql: str, **kwargs) -> List[Dict[str, Any]]:
         """
@@ -114,25 +119,26 @@ class DatabaseManager(metaclass=__DatabaseManager):
         기본 커서가 튜플을 반환하므로, cursor.description으로 컬럼명을 읽어 dict로 매핑.
         """
         params = kwargs or {}
-        self._ensure_conn()
-        try:
-            with self.db_conn.cursor() as cur:
-                cur.execute(sql, params)
-                rows = cur.fetchall()
-                cols = [d[0] for d in (cur.description or [])]
-        except (pymysql.err.InterfaceError, pymysql.err.OperationalError):
-            self._reconnect()
-            with self.db_conn.cursor() as cur:
-                cur.execute(sql, params)
-                rows = cur.fetchall()
-                cols = [d[0] for d in (cur.description or [])]
+        with self._lock:
+            self._ensure_conn()
+            try:
+                with self.db_conn.cursor() as cur:
+                    cur.execute(sql, params)
+                    rows = cur.fetchall()
+                    cols = [d[0] for d in (cur.description or [])]
+            except (pymysql.err.InterfaceError, pymysql.err.OperationalError):
+                self._reconnect()
+                with self.db_conn.cursor() as cur:
+                    cur.execute(sql, params)
+                    rows = cur.fetchall()
+                    cols = [d[0] for d in (cur.description or [])]
 
-        if not rows:
-            return []
-        # 이미 dict를 주는 커서가 아니라면(기본 튜플), dict로 변환
-        if not isinstance(rows[0], dict):
-            return [dict(zip(cols, r)) for r in rows]
-        return rows  # 혹시 DictCursor로 바뀌어도 호환
+            if not rows:
+                return []
+            # 이미 dict를 주는 커서가 아니라면(기본 튜플), dict로 변환
+            if not isinstance(rows[0], dict):
+                return [dict(zip(cols, r)) for r in rows]
+            return rows  # 혹시 DictCursor로 바뀌어도 호환
 
     def fetch_one(self, sql: str, **kwargs) -> Optional[Dict[str, Any]]:
         """
