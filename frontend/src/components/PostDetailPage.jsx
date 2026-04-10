@@ -8,6 +8,7 @@ const POPULAR_COMMENT_THRESHOLD = 5;
 const POPULAR_COMMENT_LIMIT = 3;
 
 // --- 퍼블릭 폴더의 이미지를 사용하는 아이콘 컴포넌트 ---
+
 const SortDownIcon = () => (
     <img
         src="/descending.png"
@@ -27,6 +28,7 @@ const SortUpIcon = () => (
         className="sort-icon-img"
     />
 );
+
 // --------------------------------------------------------
 
 export function PostDetailPage() {
