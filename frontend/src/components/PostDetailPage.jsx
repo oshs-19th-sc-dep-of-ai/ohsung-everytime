@@ -7,17 +7,25 @@ import './PostDetailPage.css';
 const POPULAR_COMMENT_THRESHOLD = 5;
 const POPULAR_COMMENT_LIMIT = 3;
 
-// --- 커스텀 SVG 아이콘 컴포넌트 (회색조, 자연스러운 화살표) ---
+// --- 퍼블릭 폴더의 이미지를 사용하는 아이콘 컴포넌트 ---
 const SortDownIcon = () => (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="grey-icon">
-        <path d="M12 5v14M19 12l-7 7-7-7"/>
-    </svg>
+    <img
+        src="/descending.png"
+        alt="내림차순"
+        width="16"
+        height="16"
+        className="sort-icon-img"
+    />
 );
 
 const SortUpIcon = () => (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="grey-icon">
-        <path d="M12 19V5M5 12l7-7 7 7"/>
-    </svg>
+    <img
+        src="/ascending.png"
+        alt="오름차순"
+        width="16"
+        height="16"
+        className="sort-icon-img"
+    />
 );
 // --------------------------------------------------------
 
@@ -26,15 +34,22 @@ export function PostDetailPage() {
     const navigate = useNavigate();
 
     const [post, setPost] = useState(null);
-    const [comments, setComments] = useState([]); // 계층형 구조
+    const [comments, setComments] = useState([]);
     const [newComment, setNewComment] = useState("");
     const [isAnonymous, setIsAnonymous] = useState(true);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    // [관리자 전용] 익명 게시글/댓글 작성자 추적 내역 상태 관리
+    const [tracedPostAuthor, setTracedPostAuthor] = useState(null);
+    const [tracedAuthors, setTracedAuthors] = useState({});
+
     // 정렬 관련 상태
-    const [sortType, setSortType] = useState('latest'); // latest(최신순), popular(인기순)
-    const [sortOrder, setSortOrder] = useState('desc'); // desc(내림차순), asc(오름차순)
+    const [sortType, setSortType] = useState('latest');
+    const [sortOrder, setSortOrder] = useState('desc');
+
+    // 로그인 정보를 기반으로 관리자 여부 확인
+    const isAdmin = localStorage.getItem("status") === "admin";
 
     const fetchPostAndComments = useCallback(async (abortSignal) => {
         try {
@@ -56,17 +71,17 @@ export function PostDetailPage() {
                     createdAt: p.created_at,
                     likes: p.likes_count || 0,
                     is_liked: p.is_liked || false,
+                    is_anonymous: p.is_anonymous,
                 });
             }
 
-            // 2. 댓글 목록 조회 API 호출 (계층 구조 데이터 수신)
+            // 2. 댓글 목록 조회 API 호출
             const commentsRes = await axios.get(`${API_BASE_URL}/posts/${postId}/comments`, {
                 withCredentials: true,
                 signal: abortSignal
             });
 
             if (commentsRes.data && commentsRes.data.data) {
-                // 백엔드에서 준 계층 구조를 그대로 사용 (익명 번호 매핑 로직 제거)
                 setComments(commentsRes.data.data);
             }
 
@@ -92,10 +107,7 @@ export function PostDetailPage() {
         return () => controller.abort();
     }, [fetchPostAndComments]);
 
-    // 베스트 댓글 추출 로직 (좋아요 수 기준 최상위 N개)
-    // processedComments와 별개로, 항상 '원래 시간순' 데이터 기반으로 추출하는 것이 일반적
     const topPopularComments = useMemo(() => {
-        // 모든 댓글/대댓글을 평탄화하여 좋아요 순으로 정렬 후 추출
         const allCommentsFlattened = [];
         const flatten = (items) => {
             items.forEach(item => {
@@ -109,15 +121,13 @@ export function PostDetailPage() {
 
         return allCommentsFlattened
             .filter(c => (c.likes_count || 0) >= POPULAR_COMMENT_THRESHOLD)
-            .sort((a, b) => (b.likes_count || 0) - (a.likes_count || 0)) // 좋아요 내림차순
+            .sort((a, b) => (b.likes_count || 0) - (a.likes_count || 0))
             .slice(0, POPULAR_COMMENT_LIMIT);
     }, [comments]);
 
-    // 정렬 및 차순 적용된 최상위 댓글 목록 계산
     const processedComments = useMemo(() => {
-        let result = [...comments]; // 최상위 댓글만 복사
+        let result = [...comments];
 
-        // 정렬 로직 (최상위 댓글에만 적용)
         result.sort((a, b) => {
             if (sortType === 'latest') {
                 const dateA = new Date(a.created_at).getTime();
@@ -153,6 +163,33 @@ export function PostDetailPage() {
         }
     };
 
+    // [기능 1] 게시물 강제 삭제 - 확인창 추가
+    const handleAdminPostDelete = async () => {
+        const confirmDelete = window.confirm("⚠️ 경고: 관리자 권한으로 이 게시글을 정말로 '강제 삭제'하시겠습니까?\n삭제된 데이터는 복구할 수 없습니다.");
+        if (!confirmDelete) return;
+
+        try {
+            await axios.delete(`${API_BASE_URL}/admin/posts/${postId}`, { withCredentials: true });
+            alert("게시글이 강제 삭제되었습니다.");
+            navigate(-1);
+        } catch (err) {
+            alert(err.response?.data?.message || "게시글 삭제에 실패했습니다.");
+        }
+    };
+
+    // [기능 2] 익명 게시글 작성자 정보 추적
+    const handleTracePostAuthor = async () => {
+        try {
+            const res = await axios.get(`${API_BASE_URL}/admin/trace/posts/${postId}`, { withCredentials: true });
+            if (res.data.status === 'success') {
+                const { student_name, author_id } = res.data.data;
+                setTracedPostAuthor(`${student_name} (${author_id})`);
+            }
+        } catch (err) {
+            alert(err.response?.data?.message || "게시글 작성자 조회에 실패했습니다.");
+        }
+    };
+
     const handleCommentSubmit = async (e) => {
         e.preventDefault();
         if (!newComment.trim()) return;
@@ -160,12 +197,12 @@ export function PostDetailPage() {
         try {
             await axios.post(`${API_BASE_URL}/posts/${postId}/comments`, {
                 content: newComment,
-                is_anonymous: isAnonymous // 익명 체크 상태 전송
+                is_anonymous: isAnonymous
             }, { withCredentials: true });
 
             setNewComment("");
             alert("댓글이 작성되었습니다.");
-            fetchPostAndComments(); // 목록 새로고침
+            fetchPostAndComments();
         } catch (err) {
             if (err.response?.status === 401) alert("로그인이 필요합니다.");
             else alert(err.response?.data?.message || "댓글 작성에 실패했습니다.");
@@ -176,7 +213,6 @@ export function PostDetailPage() {
         try {
             const res = await axios.post(`${API_BASE_URL}/comments/${commentId}/like`, {}, { withCredentials: true });
             if (res.data.status === 'success') {
-                // 데이터를 다시 불러와 화면 갱신 (성능 최적화 필요 시 부분 업데이트 구현 가능)
                 fetchPostAndComments();
             }
         } catch (err) {
@@ -185,19 +221,70 @@ export function PostDetailPage() {
         }
     };
 
-    // 단일 댓글 아이템 렌더링 함수
-    const renderCommentItem = (comment, isPopularBadge = false) => {
-        // 이름 표시 로직: 백엔드에서 준 author_name을 그대로 쓰되, is_anonymous면 '익명'으로 고정
-        const displayName = comment.is_anonymous ? "익명" : comment.author_name;
+    // [기능 3] 댓글 강제 삭제 - 확인창 추가
+    const handleAdminCommentDelete = async (commentId) => {
+        const confirmDelete = window.confirm("⚠️ 관리자 권한으로 이 댓글을 강제 삭제하시겠습니까?");
+        if (!confirmDelete) return;
 
+        try {
+            await axios.delete(`${API_BASE_URL}/admin/comments/${commentId}`, { withCredentials: true });
+            alert("댓글이 강제 삭제되었습니다.");
+            fetchPostAndComments();
+        } catch (err) {
+            alert(err.response?.data?.message || "댓글 삭제에 실패했습니다.");
+        }
+    };
+
+    // [기능 4] 익명 댓글 작성자 정보 추적
+    const handleTraceCommentAuthor = async (commentId) => {
+        try {
+            const res = await axios.get(`${API_BASE_URL}/admin/trace/comments/${commentId}`, { withCredentials: true });
+            if (res.data.status === 'success') {
+                const { student_name, author_id } = res.data.data;
+                setTracedAuthors(prev => ({
+                    ...prev,
+                    [commentId]: `${student_name} (${author_id})`
+                }));
+            }
+        } catch (err) {
+            alert(err.response?.data?.message || "작성자 조회에 실패했습니다.");
+        }
+    };
+
+    const renderCommentItem = (comment, isPopularBadge = false) => {
         return (
             <div key={`comment-${comment.comment_id}`} className={`comment-item ${isPopularBadge ? 'popular-highlight' : ''}`}>
-                <div className="comment-header">
+                <div className="comment-header" style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <div>
                         {isPopularBadge && <span className="best-badge">🔥 베스트</span>}
-                        <span className="comment-author">{displayName}</span>
+                        <span className="comment-author">
+                            {comment.author_name}
+                            {isAdmin && comment.is_anonymous && (
+                                <span style={{ marginLeft: '6px', fontSize: '12px', color: '#ff4d4f' }}>
+                                    {tracedAuthors[comment.comment_id] ? (
+                                        `[실명: ${tracedAuthors[comment.comment_id]}]`
+                                    ) : (
+                                        <button
+                                            onClick={() => handleTraceCommentAuthor(comment.comment_id)}
+                                            style={{ background: '#f5f5f5', border: '1px solid #ddd', borderRadius: '3px', cursor: 'pointer', padding: '2px 5px', fontSize: '11px' }}
+                                        >
+                                            작성자 조회
+                                        </button>
+                                    )}
+                                </span>
+                            )}
+                        </span>
                         <span className="comment-date">{comment.created_at}</span>
                     </div>
+
+                    {isAdmin && (
+                        <button
+                            onClick={() => handleAdminCommentDelete(comment.comment_id)}
+                            style={{ background: 'none', border: 'none', color: '#ff4d4f', cursor: 'pointer', fontSize: '12px' }}
+                        >
+                            강제 삭제
+                        </button>
+                    )}
                 </div>
 
                 <div className="comment-body">
@@ -230,7 +317,23 @@ export function PostDetailPage() {
                     <div className="post-card">
                         <h2 className="post-title">{post.title}</h2>
                         <div className="post-meta">
-                            <span className="author">{post.author}</span>
+                            <span className="author">
+                                {post.author}
+                                {isAdmin && post.is_anonymous && (
+                                    <span style={{ marginLeft: '8px', color: '#ff4d4f', fontSize: '13px' }}>
+                                        {tracedPostAuthor ? (
+                                            `[실명: ${tracedPostAuthor}]`
+                                        ) : (
+                                            <button
+                                                onClick={handleTracePostAuthor}
+                                                style={{ background: '#f5f5f5', border: '1px solid #ddd', borderRadius: '3px', cursor: 'pointer', padding: '2px 5px' }}
+                                            >
+                                                작성자 조회
+                                            </button>
+                                        )}
+                                    </span>
+                                )}
+                            </span>
                             <span className="date">{post.createdAt}</span>
                         </div>
                         <hr className="divider" />
@@ -241,19 +344,27 @@ export function PostDetailPage() {
                             ))}
                         </div>
 
-                        <div className="post-actions">
+                        <div className="post-actions" style={{ display: 'flex', gap: '10px' }}>
                             <button
                                 onClick={handlePostLike}
                                 className={`post-like-btn ${post.is_liked ? 'liked' : ''}`}
                             >
                                 {post.is_liked ? '❤️' : '🤍'} 공감 {post.likes}
                             </button>
+
+                            {isAdmin && (
+                                <button
+                                    onClick={handleAdminPostDelete}
+                                    style={{ background: '#ff4d4f', color: 'white', border: 'none', borderRadius: '4px', padding: '0 12px', cursor: 'pointer', fontSize: '14px' }}
+                                >
+                                    🗑️ 강제 삭제
+                                </button>
+                            )}
                         </div>
                     </div>
 
                     {/* 댓글 영역 */}
                     <div className="comments-section">
-                        {/* 베스트 댓글 영역 */}
                         {topPopularComments.length > 0 && (
                             <div className="popular-comments-container">
                                 <h3 className="popular-title">🔥 실시간 인기 댓글</h3>
@@ -261,13 +372,10 @@ export function PostDetailPage() {
                             </div>
                         )}
 
-                        {/* 댓글 헤더 (개수 및 정렬) */}
                         <div className="comments-header-row">
                             <h3 className="comments-title">전체 댓글 ({comments.length})</h3>
 
-                            {/* 정렬 컨트롤 영역 */}
                             <div className="sort-controls">
-                                {/* 원터치 차순 변경 버튼 (이모지 -> SVG 아이콘) */}
                                 <button
                                     onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
                                     className="sort-order-btn"
@@ -275,7 +383,6 @@ export function PostDetailPage() {
                                 >
                                     {sortOrder === 'desc' ? <SortDownIcon /> : <SortUpIcon />}
                                 </button>
-                                {/* 정렬 기준 선택 */}
                                 <select
                                     value={sortType}
                                     onChange={(e) => setSortType(e.target.value)}
@@ -287,15 +394,11 @@ export function PostDetailPage() {
                             </div>
                         </div>
 
-                        {/* 댓글 목록 */}
                         <div className="comments-list">
                             {processedComments.length > 0 ? (
                                 processedComments.map(comment => (
                                     <div key={comment.comment_id} className="comment-thread">
-                                        {/* 원댓글 */}
                                         {renderCommentItem(comment)}
-
-                                        {/* 대댓글 목록 */}
                                         {comment.replies && comment.replies.length > 0 && (
                                             <div className="replies-list">
                                                 {comment.replies.map(reply => renderCommentItem(reply))}
@@ -308,7 +411,6 @@ export function PostDetailPage() {
                             )}
                         </div>
 
-                        {/* 댓글 입력 폼 (디자인 수정) */}
                         <form onSubmit={handleCommentSubmit} className="comment-form">
                             <div className="comment-input-wrapper">
                                 <input
@@ -319,7 +421,6 @@ export function PostDetailPage() {
                                     className="comment-input"
                                 />
                                 <div className="comment-options">
-                                    {/* 커스텀 디자인된 익명 체크박스 */}
                                     <label className="anonymous-checkbox-label">
                                         <input
                                             type="checkbox"
