@@ -165,7 +165,7 @@ export function PostDetailPage() {
 
     // [기능 1] 게시물 강제 삭제 - 확인창 추가
     const handleAdminPostDelete = async () => {
-        const confirmDelete = window.confirm("⚠️ 경고: 관리자 권한으로 이 게시글을 정말로 '강제 삭제'하시겠습니까?\n삭제된 데이터는 복구할 수 없습니다.");
+        const confirmDelete = window.confirm("관리자 권한으로 이 게시글을 정말로 '강제 삭제'하시겠습니까?");
         if (!confirmDelete) return;
 
         try {
