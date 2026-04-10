@@ -264,7 +264,7 @@ export function PostDetailPage() {
                             {isAdmin && comment.is_anonymous && (
                                 <span style={{ marginLeft: '6px', fontSize: '12px', color: '#ff4d4f' }}>
                                     {tracedAuthors[comment.comment_id] ? (
-                                        `[실명: ${tracedAuthors[comment.comment_id]}]`
+                                        `[이름(ID): ${tracedAuthors[comment.comment_id]}]`
                                     ) : (
                                         <button
                                             onClick={() => handleTraceCommentAuthor(comment.comment_id)}
@@ -324,7 +324,7 @@ export function PostDetailPage() {
                                 {isAdmin && post.is_anonymous && (
                                     <span style={{ marginLeft: '8px', color: '#ff4d4f', fontSize: '13px' }}>
                                         {tracedPostAuthor ? (
-                                            `[실명: ${tracedPostAuthor}]`
+                                            `[이름(ID): ${tracedPostAuthor}]`
                                         ) : (
                                             <button
                                                 onClick={handleTracePostAuthor}
