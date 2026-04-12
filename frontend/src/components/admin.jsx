@@ -1,6 +1,6 @@
 import { useState } from "react";
 import "./admin.css";
-import { API_BASE_URL } from "./config";
+import { API_BASE_URL } from "../config";
 
 // ───── 공통 fetch 헬퍼 ─────
 const apiFetch = async (url, options = {}) => {
