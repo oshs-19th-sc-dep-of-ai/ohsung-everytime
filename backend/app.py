@@ -1,3 +1,4 @@
+import os
 from flask                 import Flask
 from flask_cors            import CORS
 from flask_session         import Session
@@ -38,7 +39,11 @@ app.config['SESSION_KEY_PREFIX'] = Config().get()["Session"]["KeyPrefix"]
 
 # ★ 로컬 개발환경에서 쿠키 전달 보장 (CORS + 다른 포트 사용 시 필수)
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'   # 프론트/백엔드 포트가 달라도 쿠키 전달
-app.config['SESSION_COOKIE_SECURE']   = False   # http 환경에서는 False (https에서만 True)
+
+# 환경 변수나 직접 실행 여부에 따라 테스트/개발 환경인지 자동 판별
+is_test_env = os.environ.get('FLASK_ENV') == 'development' or os.environ.get('FLASK_DEBUG') == '1' or __name__ == '__main__'
+app.config['SESSION_COOKIE_SECURE']   = not is_test_env   # 테스트(http) 환경에서는 False, 운영(https)에서는 True
+
 app.config["JSON_SORT_KEYS"] = False
 
 Session(app)

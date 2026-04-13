@@ -1,4 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { useEffect } from "react";
+import axios from "axios";
+import { API_BASE_URL } from "./config";
 import { MainPage } from "./components/MainPage";
 import { Header } from "./components/Header.jsx";
 import { PostListPage } from "./components/PostListPage.jsx";
@@ -30,6 +33,23 @@ function PublicRoute({ children }) {
 }
 
 function App() {
+  useEffect(() => {
+    if (isLoggedIn()) {
+      axios
+        .get(`${API_BASE_URL}/check_session`, { withCredentials: true })
+        .then((res) => {
+          if (res.data.status === "unauthorized") {
+            // 서버 세션과 로컬 스토리지 상태 불일치 (세션 만료)
+            localStorage.clear();
+            window.location.href = "/login";
+          }
+        })
+        .catch((err) => {
+          console.error("세션 확인 실패:", err);
+        });
+    }
+  }, []);
+
   return (
     <BrowserRouter>
       <Header />
