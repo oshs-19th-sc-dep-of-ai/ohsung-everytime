@@ -22,7 +22,7 @@ export function Header() {
         <header className="top-bar">
             <div className="top-bar-content">
                 {/* 로고 클릭 시 메인 페이지로 이동하는 편의성 추가 */}
-                <h1 className="logo" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>오성에타</h1>
+                <h1 className="logo" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>오성광장</h1>
                 <button className="logout-button" type="button" onClick={handleLogout}>
                     로그아웃
                 </button>
