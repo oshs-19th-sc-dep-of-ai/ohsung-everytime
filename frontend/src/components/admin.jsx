@@ -342,7 +342,7 @@ export default function AdminPage() {
       <header className="admin-header">
         <div className="admin-header__left">
           <span className="admin-header__badge">ADMIN</span>
-          <span className="admin-header__title">오성에타 관리자</span>
+          <span className="admin-header__title">오성광장 관리자</span>
         </div>
         <span className="admin-header__user">🛡 {userName}</span>
       </header>
