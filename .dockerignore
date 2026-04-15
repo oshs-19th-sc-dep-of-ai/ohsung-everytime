@@ -1,0 +1,15 @@
+.git/
+.idea/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+frontend/
+setup_systemd.sh
