@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
@@ -17,8 +17,13 @@ export function MainPage() {
 
     // 푸시 알림 토큰 요청 로직
     // 푸시 알림 토큰 요청 로직
+    const tokenRequestSent = useRef(false);
+
     useEffect(() => {
         const requestPermission = async () => {
+            // StrictMode로 인한 중복 호출 방지
+            if (tokenRequestSent.current) return;
+            tokenRequestSent.current = true;
             if (localStorage.getItem("login") !== "true") {
                 console.log('User not logged in, skipping token registration.');
                 return;
@@ -29,19 +34,24 @@ export function MainPage() {
                 if (permission === 'granted') {
                     const token = await getToken(messaging);
                     if (token) {
-                        // 백엔드 알림 토큰 등록 API의 DB 멈춤 버그를 우회하기 위해 API 호출을 차단
-                        // 에러남..?
-                        /*
-                        await fetch(`${API_BASE_URL}/notifications/register-token`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({ token }),
-                            credentials: 'include',
-                        });
-                        */
-                        console.log("알림 토큰 발급 성공 (백엔드 전송은 서버 오류 방지를 위해 비활성화됨)");
+                        try {
+                            const response = await fetch(`${API_BASE_URL}/notifications/register-token`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({ token }),
+                                credentials: 'include',
+                            });
+                            
+                            if (response.ok) {
+                                console.log("알림 토큰 발급 및 백엔드 전송 성공");
+                            } else {
+                                console.error("알림 토큰 백엔드 전송 실패:", response.status);
+                            }
+                        } catch (err) {
+                            console.error("알림 토큰 백엔드 전송 중 오류 발생:", err);
+                        }
                     }
                 }
             } catch (error) {

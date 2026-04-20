@@ -1,5 +1,9 @@
+import { precacheAndRoute } from 'workbox-precaching';
+
 // FCM 백그라운드 메시지 처리용 Service Worker
-// 이 파일은 반드시 public/ 폴더에 있어야 합니다
+// 이 파일은 Vite PWA의 injectManifest에 의해 번들링되어 최종적으로 dist/ 에 배치됩니다.
+
+precacheAndRoute(self.__WB_MANIFEST);
 
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js');
