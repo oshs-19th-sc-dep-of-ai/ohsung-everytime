@@ -28,7 +28,6 @@ def send_lunch_menu_notification():
         print("[Scheduler] 등록된 FCM 토큰이 없습니다.")
         return
         
-    # 500개씩 나누어 전송 (MulticastMessage 최대 토큰 수는 500개)
     batch_size = 500
     for i in range(0, len(tokens), batch_size):
         batch_tokens = tokens[i:i + batch_size]
@@ -36,6 +35,13 @@ def send_lunch_menu_notification():
             notification=messaging.Notification(
                 title=title,
                 body=body
+            ),
+            webpush=messaging.WebpushConfig(
+                notification=messaging.WebpushNotification(
+                    icon='/vite.svg',
+                    badge='/vite.svg'
+                ),
+                fcm_options=messaging.WebpushFCMOptions(link='/meal')
             ),
             tokens=batch_tokens
         )
@@ -93,6 +99,13 @@ def send_dinner_menu_notification():
             notification=messaging.Notification(
                 title=title,
                 body=body
+            ),
+            webpush=messaging.WebpushConfig(
+                notification=messaging.WebpushNotification(
+                    icon='/vite.svg',
+                    badge='/vite.svg'
+                ),
+                fcm_options=messaging.WebpushFCMOptions(link='/meal')
             ),
             tokens=batch_tokens
         )

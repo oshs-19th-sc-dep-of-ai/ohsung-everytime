@@ -38,8 +38,13 @@ app.config['SESSION_PERMANENT']  = Config().get()["Session"]["Permanent"]
 app.config['SESSION_USE_SIGNER'] = Config().get()["Session"]["UseSigner"]
 app.config['SESSION_KEY_PREFIX'] = Config().get()["Session"]["KeyPrefix"]
 
+from datetime import timedelta
+
 # ★ 로컬 개발환경에서 쿠키 전달 보장 (CORS + 다른 포트 사용 시 필수)
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'   # 프론트/백엔드 포트가 달라도 쿠키 전달
+
+# 세션 유지 기간 설정 (예: 31일)
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=31)
 
 # 환경 변수나 직접 실행 여부에 따라 테스트/개발 환경인지 자동 판별
 is_test_env = os.environ.get('FLASK_ENV') == 'development' or os.environ.get('FLASK_DEBUG') == '1' or __name__ == '__main__'

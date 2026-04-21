@@ -33,6 +33,37 @@ messaging.onBackgroundMessage((payload) => {
             body: body,
             icon: '/vite.svg',
             badge: '/vite.svg',
+            data: {
+                link: payload.fcmOptions?.link || payload.data?.link || '/meal'
+            }
         });
     }
+});
+
+// 알림 클릭 시 이동 처리
+self.addEventListener('notificationclick', function(event) {
+    event.notification.close();
+    
+    // 링크 정보 추출 (FCM fcm_options.link, data.link 등)
+    let targetUrl = '/meal';
+    if (event.notification.data && event.notification.data.link) {
+        targetUrl = event.notification.data.link;
+    } else if (event.notification.data && event.notification.data.FCM_MSG && event.notification.data.FCM_MSG.fcmOptions && event.notification.data.FCM_MSG.fcmOptions.link) {
+        targetUrl = event.notification.data.FCM_MSG.fcmOptions.link;
+    }
+    
+    // 이미 열려있는 창이 있는지 확인
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+            for (let i = 0; i < windowClients.length; i++) {
+                const client = windowClients[i];
+                if (client.url.includes(targetUrl) && 'focus' in client) {
+                    return client.focus();
+                }
+            }
+            if (clients.openWindow) {
+                return clients.openWindow(targetUrl);
+            }
+        })
+    );
 });

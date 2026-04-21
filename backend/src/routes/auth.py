@@ -38,6 +38,7 @@ def login():
         student_id, student_name, is_admin = student
 
         # 세션 사용 사용자 정보 저장
+        session.permanent = True
         session['student_id'] = student_id
         session['student_name'] = student_name
         session['session_student_id'] = student_id  # 다른 라우트 호환용
