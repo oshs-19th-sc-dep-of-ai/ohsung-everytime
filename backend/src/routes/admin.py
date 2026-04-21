@@ -118,6 +118,12 @@ def admin_push_notification():
         # FCM 메시지 생성
         message = messaging.MulticastMessage(
             notification=messaging.Notification(title=title, body=body),
+            webpush=messaging.WebpushConfig(
+                notification=messaging.WebpushNotification(
+                    icon='/vite.svg',
+                    badge='/vite.svg'
+                )
+            ),
             tokens=token_list
         )
         

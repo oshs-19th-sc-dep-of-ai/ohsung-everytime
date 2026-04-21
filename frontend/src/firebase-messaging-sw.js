@@ -23,10 +23,16 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
     console.log('[SW] 백그라운드 메시지 수신:', payload);
 
-    const { title, body } = payload.notification ?? {};
-    self.registration.showNotification(title ?? '새 알림', {
-        body: body ?? '',
-        icon: '/vite.svg',
-        badge: '/vite.svg',
-    });
+    // FCM SDK가 notification 페이로드가 있으면 자동으로 알림을 표시합니다.
+    // 여기서 showNotification을 또 호출하면 알림이 두 번 울리게 됩니다 (중복 알림 발생).
+    // 따라서 notification 객체가 없을 때(data 페이로드만 있을 때)만 수동으로 알림을 띄웁니다.
+    if (!payload.notification) {
+        const title = payload.data?.title ?? '새 알림';
+        const body = payload.data?.body ?? '';
+        self.registration.showNotification(title, {
+            body: body,
+            icon: '/vite.svg',
+            badge: '/vite.svg',
+        });
+    }
 });
