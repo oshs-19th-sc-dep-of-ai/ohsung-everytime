@@ -104,6 +104,50 @@
 }
 
 /* =========================================
+   1.5. Install Section (앱 설치)
+========================================= */
+.install-section {
+    background: linear-gradient(105deg, #3182F6 0%, #6DB5F5 100%);
+    height: 72px;
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    color: white;
+    gap: 14px;
+}
+
+.install-icon {
+    font-size: 32px;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.install-text-group {
+    flex: 1;
+    min-width: 0;
+}
+
+.install-text-group h2 {
+    font-size: 17px;
+    font-weight: 700;
+    margin: 0 0 2px 0;
+}
+
+.install-desc {
+    display: block;
+    font-size: 12px;
+    opacity: 0.85;
+    font-weight: 500;
+}
+
+.install-arrow {
+    font-size: 18px;
+    font-weight: 700;
+    opacity: 0.8;
+    flex-shrink: 0;
+}
+
+/* =========================================
    2. Board Section (게시판)
 ========================================= */
 .board-section {

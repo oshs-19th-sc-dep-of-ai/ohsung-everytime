@@ -15,6 +15,9 @@ export function MainPage() {
     // 인기글 데이터를 저장할 상태
     const [top3Posts, setTop3Posts] = useState([]);
 
+    // PWA 설치 가능 여부 상태
+    const [isInstallable, setIsInstallable] = useState(false);
+
     // 푸시 알림 토큰 요청 로직
     // 푸시 알림 토큰 요청 로직
     const tokenRequestSent = useRef(false);
@@ -61,6 +64,47 @@ export function MainPage() {
 
         requestPermission();
     }, []);
+
+    // PWA 설치 버튼 표시 여부 감지
+    useEffect(() => {
+        // 이미 설치된 PWA인 경우 버튼 숨기기
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+            || window.navigator.standalone === true;
+        if (isStandalone) {
+            setIsInstallable(false);
+            return;
+        }
+
+        // 이미 이벤트가 저장되어 있는 경우
+        if (window.deferredPrompt) {
+            setIsInstallable(true);
+        }
+
+        const handleReady = () => setIsInstallable(true);
+        const handleInstalled = () => setIsInstallable(false);
+
+        window.addEventListener('pwaInstallReady', handleReady);
+        window.addEventListener('pwaInstalled', handleInstalled);
+
+        return () => {
+            window.removeEventListener('pwaInstallReady', handleReady);
+            window.removeEventListener('pwaInstalled', handleInstalled);
+        };
+    }, []);
+
+    // 앱 설치 핸들러
+    const handleInstallClick = async () => {
+        const promptEvent = window.deferredPrompt;
+        if (!promptEvent) return;
+
+        promptEvent.prompt();
+        const result = await promptEvent.userChoice;
+        if (result.outcome === 'accepted') {
+            console.log('PWA 설치 완료');
+        }
+        window.deferredPrompt = null;
+        setIsInstallable(false);
+    };
 
     // API 연동: 인기 게시글 3개 추출
     useEffect(() => {
@@ -134,6 +178,17 @@ export function MainPage() {
                         <h2>급식 메뉴 확인하기 ➜</h2>
                     </div>
                 </section>
+
+                {isInstallable && (
+                    <section className="menu-card install-section" onClick={handleInstallClick}>
+                        <div className="install-icon">📲</div>
+                        <div className="install-text-group">
+                            <h2>앱 설치하기</h2>
+                            <span className="install-desc">홈 화면에 추가하여 빠르게 접속하세요</span>
+                        </div>
+                        <div className="install-arrow">➜</div>
+                    </section>
+                )}
 
                 <section className="menu-card board-section" onClick={goPostList}>
                     <div className="board-header">

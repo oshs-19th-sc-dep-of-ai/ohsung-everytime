@@ -19,8 +19,8 @@ export default defineConfig({
         injectionPoint: 'self.__WB_MANIFEST',
       },
       manifest: {
-        name: '오성에타',
-        short_name: '오성에타',
+        name: '오성광장',
+        short_name: '오성광장',
         theme_color: '#ffffff',
         background_color: '#ffffff',
         display: 'standalone',
