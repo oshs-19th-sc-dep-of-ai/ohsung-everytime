@@ -41,7 +41,7 @@ def send_lunch_menu_notification():
                     icon='/vite.svg',
                     badge='/vite.svg'
                 ),
-                fcm_options=messaging.WebpushFCMOptions(link='/meal')
+                fcm_options=messaging.WebpushFCMOptions(link='https://coshsc.kr/meal')
             ),
             tokens=batch_tokens
         )
@@ -102,10 +102,10 @@ def send_dinner_menu_notification():
             ),
             webpush=messaging.WebpushConfig(
                 notification=messaging.WebpushNotification(
-                    icon='/vite.svg',
-                    badge='/vite.svg'
+                    icon='/fork.svg',
+                    badge='/fork.svg'
                 ),
-                fcm_options=messaging.WebpushFCMOptions(link='/meal')
+                fcm_options=messaging.WebpushFCMOptions(link='https://square.coshsc.kr/meal')
             ),
             tokens=batch_tokens
         )
