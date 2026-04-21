@@ -117,6 +117,59 @@ def add_comment(post_id):
     db.query(sql, post_id=post_id, student_id=student_id, content=content, parent_id=parent_id, is_anonymous=is_anonymous)
     db.commit()
     
+    # -----------------------------------------------------
+    # 푸시 알림 발송: 게시글 작성자와 댓글 작성자가 다를 경우
+    # -----------------------------------------------------
+    try:
+        post_info_sql = "SELECT author_id, title FROM Posts WHERE post_id = %(post_id)s"
+        post_info = db.query(post_info_sql, post_id=post_id).result
+        
+        if post_info:
+            post_author_id, post_title = post_info[0]
+            
+            # 본인의 게시글에 댓글을 단 것이 아닐 때만 알림 전송
+            if post_author_id != student_id:
+                tokens_data = db.query("SELECT token FROM fcm_tokens WHERE user_id = %(user_id)s", user_id=post_author_id).result
+                if tokens_data:
+                    tokens = [t[0] for t in tokens_data]
+                    
+                    from firebase_admin import messaging
+                    notification_title = "새로운 댓글이 달렸습니다"
+                    short_title = post_title if len(post_title) <= 20 else post_title[:20] + "..."
+                    notification_body = f"[{short_title}] 게시글에 새 댓글이 달렸습니다: {content}"
+                    target_url = f"https://square.coshsc.kr/post/{post_id}"
+                    
+                    message = messaging.MulticastMessage(
+                        notification=messaging.Notification(
+                            title=notification_title,
+                            body=notification_body
+                        ),
+                        webpush=messaging.WebpushConfig(
+                            notification=messaging.WebpushNotification(
+                                icon='/comment.svg',
+                                badge='/comment.svg'
+                            ),
+                            fcm_options=messaging.WebpushFCMOptions(link=target_url)
+                        ),
+                        tokens=tokens
+                    )
+                    
+                    response = messaging.send_each_for_multicast(message)
+                    
+                    if response.failure_count > 0:
+                        failed_tokens = []
+                        for idx, resp in enumerate(response.responses):
+                            if not resp.success:
+                                if resp.exception and resp.exception.code in ['messaging/invalid-registration-token', 'messaging/registration-token-not-registered']:
+                                    failed_tokens.append(tokens[idx])
+                                    
+                        if failed_tokens:
+                            for token in failed_tokens:
+                                db.query("DELETE FROM fcm_tokens WHERE token = %(token)s", token=token)
+                            db.commit()
+    except Exception as e:
+        print(f"[Comment Notification] 알림 전송 중 오류 발생: {e}")
+    
     return jsonify({
         "status": "success", 
         "message": "댓글이 등록되었습니다."
