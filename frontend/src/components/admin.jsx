@@ -150,6 +150,42 @@ function PushNotificationTab() {
     }
   };
 
+  const sendTestLunchPush = async () => {
+    setLoading(true);
+    setResult(null);
+    try {
+      const data = await apiFetch("/admin/test/lunch-push", {
+        method: "POST",
+      });
+      setResult({
+        type: "success",
+        message: data.message,
+      });
+    } catch (e) {
+      setResult({ type: "error", message: `⚠️ ${e.message}` });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const sendTestDinnerPush = async () => {
+    setLoading(true);
+    setResult(null);
+    try {
+      const data = await apiFetch("/admin/test/dinner-push", {
+        method: "POST",
+      });
+      setResult({
+        type: "success",
+        message: data.message,
+      });
+    } catch (e) {
+      setResult({ type: "error", message: `⚠️ ${e.message}` });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div>
       <p className="admin-section-title">수동 푸시 알림 전송</p>
@@ -193,13 +229,33 @@ function PushNotificationTab() {
           />
         </div>
 
-        <LoadingBtn
-          loading={loading}
-          onClick={sendPush}
-          className="admin-btn--primary"
-        >
-          📣 {target === "all" ? "전체 전송" : "전송"}
-        </LoadingBtn>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <LoadingBtn
+            loading={loading}
+            onClick={sendPush}
+            className="admin-btn--primary"
+          >
+            📣 {target === "all" ? "전체 전송" : "전송"}
+          </LoadingBtn>
+          
+          <LoadingBtn
+            loading={loading}
+            onClick={sendTestLunchPush}
+            className="admin-btn--secondary"
+            style={{ backgroundColor: '#ff9800' }}
+          >
+            🍱 중식 알림 전송 테스트
+          </LoadingBtn>
+
+          <LoadingBtn
+            loading={loading}
+            onClick={sendTestDinnerPush}
+            className="admin-btn--secondary"
+            style={{ backgroundColor: '#e91e63' }}
+          >
+            🍽️ 석식 알림 전송 테스트
+          </LoadingBtn>
+        </div>
 
         {result && (
           <div className={`admin-result admin-result--${result.type}`}>

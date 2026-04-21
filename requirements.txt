@@ -48,3 +48,6 @@ typing_extensions==4.15.0
 urllib3==2.6.3
 Werkzeug==3.1.6
 yarg==0.1.10
+APScheduler==3.11.2
+pytz==2026.1.post1
+tzlocal==5.3.1

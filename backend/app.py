@@ -14,6 +14,7 @@ from src.routes.posts import posts_bp
 from src.routes.admin import admin_bp
 
 from src.utils.firebase_util import FirebaseManager
+from src.utils.scheduler_util import NotificationScheduler
 
 app = Flask(__name__)
 app.json.sort_keys = False
@@ -57,6 +58,12 @@ DatabaseManager().connect(
 
 # Firebase Admin SDK 초기화 (FCM 푸시 알림)
 FirebaseManager().initialize()
+
+# 백그라운드 스케줄러 시작 (알림 등)
+if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug:
+    # reloader 환경에서는 두 번 실행되는 것을 방지
+    NotificationScheduler().start()
+
 
 # 블루프린트 등록
 app.register_blueprint(auth_bp)           # 로그인 & 로그아웃

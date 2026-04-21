@@ -215,3 +215,31 @@ def admin_trace_comment_author(comment_id):
             "was_anonymous": bool(row[0][2])
         }
     })
+
+# ────────────────────────────────────────────
+# 5. 중식 알람 테스트
+# ────────────────────────────────────────────
+@admin_bp.route('/test/lunch-push', methods=['POST'])
+def admin_test_lunch_push():
+    if not is_admin():
+        return jsonify({"status": "error", "message": "관리자 권한이 필요합니다."}), 403
+
+    from ..utils.scheduler_util import send_lunch_menu_notification
+    try:
+        send_lunch_menu_notification()
+        return jsonify({"status": "success", "message": "중식 알람 푸시 테스트가 실행되었습니다. (서버 로그 확인)"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"중식 알람 테스트 실패: {str(e)}"}), 500
+
+@admin_bp.route('/test/dinner-push', methods=['POST'])
+def admin_test_dinner_push():
+    if not is_admin():
+        return jsonify({"status": "error", "message": "관리자 권한이 필요합니다."}), 403
+
+    from ..utils.scheduler_util import send_dinner_menu_notification
+    try:
+        send_dinner_menu_notification()
+        return jsonify({"status": "success", "message": "석식 알람 푸시 테스트가 실행되었습니다. (서버 로그 확인)"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"석식 알람 테스트 실패: {str(e)}"}), 500
+
