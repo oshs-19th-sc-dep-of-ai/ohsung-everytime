@@ -124,6 +124,18 @@ def admin_push_notification():
         # 전송 (firebase-admin v6+: send_multicast → send_each_for_multicast)
         response = messaging.send_each_for_multicast(message)
         
+        # 유효하지 않은 토큰(만료, 기기 변경 등) DB에서 정리
+        if response.failure_count > 0:
+            failed_tokens = []
+            for idx, resp in enumerate(response.responses):
+                if not resp.success:
+                    failed_tokens.append(token_list[idx])
+            
+            if failed_tokens:
+                for failed_token in failed_tokens:
+                    db.query("DELETE FROM fcm_tokens WHERE token = %(token)s", token=failed_token)
+                db.commit()
+        
         return jsonify({
             "status": "success",
             "message": "푸시 알림 전송을 완료했습니다.",
