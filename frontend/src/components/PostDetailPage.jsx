@@ -42,6 +42,9 @@ export function PostDetailPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
 
+
+    const [replyingTo, setReplyingTo] = useState(null);
+
     // [관리자 전용] 익명 게시글/댓글 작성자 추적 내역 상태 관리
     const [tracedPostAuthor, setTracedPostAuthor] = useState(null);
     const [tracedAuthors, setTracedAuthors] = useState({});
@@ -53,9 +56,10 @@ export function PostDetailPage() {
     // 로그인 정보를 기반으로 관리자 여부 확인
     const isAdmin = localStorage.getItem("status") === "admin";
 
-    const fetchPostAndComments = useCallback(async (abortSignal) => {
+
+    const fetchPostAndComments = useCallback(async (abortSignal, showLoading = true) => {
         try {
-            setIsLoading(true);
+            if (showLoading) setIsLoading(true);
 
             // 1. 게시글 상세 조회 API 호출
             const postRes = await axios.get(`${API_BASE_URL}/posts/${postId}`, {
@@ -97,7 +101,7 @@ export function PostDetailPage() {
                 setError("게시글 데이터를 불러오는 데 실패했습니다.");
             }
         } finally {
-            if (!abortSignal || !abortSignal.aborted) {
+            if (showLoading && (!abortSignal || !abortSignal.aborted)) {
                 setIsLoading(false);
             }
         }
@@ -105,7 +109,7 @@ export function PostDetailPage() {
 
     useEffect(() => {
         const controller = new AbortController();
-        fetchPostAndComments(controller.signal);
+        fetchPostAndComments(controller.signal, true);
         return () => controller.abort();
     }, [fetchPostAndComments]);
 
@@ -165,7 +169,6 @@ export function PostDetailPage() {
         }
     };
 
-    // [기능 1] 게시물 강제 삭제 - 확인창 추가
     const handleAdminPostDelete = async () => {
         const confirmDelete = window.confirm("관리자 권한으로 이 게시글을 정말로 '강제 삭제'하시겠습니까?");
         if (!confirmDelete) return;
@@ -179,7 +182,6 @@ export function PostDetailPage() {
         }
     };
 
-    // [기능 2] 익명 게시글 작성자 정보 추적
     const handleTracePostAuthor = async () => {
         try {
             const res = await axios.get(`${API_BASE_URL}/admin/trace/posts/${postId}`, { withCredentials: true });
@@ -199,12 +201,15 @@ export function PostDetailPage() {
         try {
             await axios.post(`${API_BASE_URL}/posts/${postId}/comments`, {
                 content: newComment,
-                is_anonymous: isAnonymous
+                is_anonymous: isAnonymous,
+                parent_id: replyingTo
             }, { withCredentials: true });
 
             setNewComment("");
+            setReplyingTo(null); // 전송 후 상태 초기화
             alert("댓글이 작성되었습니다.");
-            fetchPostAndComments();
+
+            fetchPostAndComments(null, false);
         } catch (err) {
             if (err.response?.status === 401) alert("로그인이 필요합니다.");
             else alert(err.response?.data?.message || "댓글 작성에 실패했습니다.");
@@ -215,7 +220,8 @@ export function PostDetailPage() {
         try {
             const res = await axios.post(`${API_BASE_URL}/comments/${commentId}/like`, {}, { withCredentials: true });
             if (res.data.status === 'success') {
-                fetchPostAndComments();
+
+                fetchPostAndComments(null, false);
             }
         } catch (err) {
             if (err.response?.status === 401) alert("로그인이 필요합니다.");
@@ -223,7 +229,6 @@ export function PostDetailPage() {
         }
     };
 
-    // [기능 3] 댓글 강제 삭제 - 확인창 추가
     const handleAdminCommentDelete = async (commentId) => {
         const confirmDelete = window.confirm("⚠️ 관리자 권한으로 이 댓글을 강제 삭제하시겠습니까?");
         if (!confirmDelete) return;
@@ -231,13 +236,12 @@ export function PostDetailPage() {
         try {
             await axios.delete(`${API_BASE_URL}/admin/comments/${commentId}`, { withCredentials: true });
             alert("댓글이 강제 삭제되었습니다.");
-            fetchPostAndComments();
+            fetchPostAndComments(null, false);
         } catch (err) {
             alert(err.response?.data?.message || "댓글 삭제에 실패했습니다.");
         }
     };
 
-    // [기능 4] 익명 댓글 작성자 정보 추적
     const handleTraceCommentAuthor = async (commentId) => {
         try {
             const res = await axios.get(`${API_BASE_URL}/admin/trace/comments/${commentId}`, { withCredentials: true });
@@ -267,6 +271,7 @@ export function PostDetailPage() {
                                         `[이름(ID): ${tracedAuthors[comment.comment_id]}]`
                                     ) : (
                                         <button
+                                            type="button"
                                             onClick={() => handleTraceCommentAuthor(comment.comment_id)}
                                             style={{ background: '#f5f5f5', border: '1px solid #ddd', borderRadius: '3px', cursor: 'pointer', padding: '2px 5px', fontSize: '11px' }}
                                         >
@@ -281,6 +286,7 @@ export function PostDetailPage() {
 
                     {isAdmin && (
                         <button
+                            type="button"
                             onClick={() => handleAdminCommentDelete(comment.comment_id)}
                             style={{ background: 'none', border: 'none', color: '#ff4d4f', cursor: 'pointer', fontSize: '12px' }}
                         >
@@ -293,12 +299,27 @@ export function PostDetailPage() {
                     {comment.content}
                 </div>
 
-                <button
-                    className={`comment-like ${comment.is_liked ? 'liked' : ''}`}
-                    onClick={() => handleCommentLike(comment.comment_id)}
-                >
-                    ❤️ {comment.likes_count || 0}
-                </button>
+
+                <div className="comment-actions" style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '10px' }}>
+                    <button
+                        type="button"
+                        className={`comment-like ${comment.is_liked ? 'liked' : ''}`}
+                        onClick={() => handleCommentLike(comment.comment_id)}
+                    >
+                        ❤️ {comment.likes_count || 0}
+                    </button>
+
+                    {/* 원댓글인 경우에만 답글 버튼 표시 (대댓글의 대댓글 제한) */}
+                    {!comment.parent_id && !isPopularBadge && (
+                        <button
+                            type="button"
+                            onClick={() => setReplyingTo(comment.comment_id)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#666', padding: '0' }}
+                        >
+                            ↳ 답글 달기
+                        </button>
+                    )}
+                </div>
             </div>
         );
     };
@@ -308,7 +329,7 @@ export function PostDetailPage() {
     return (
         <div className="post-detail-container">
             <div className="toolbar">
-                <button onClick={() => navigate(-1)} className="back-button">← 목록으로</button>
+                <button type="button" onClick={() => navigate(-1)} className="back-button">← 목록으로</button>
             </div>
 
             {error ? (
@@ -327,6 +348,7 @@ export function PostDetailPage() {
                                             `[이름(ID): ${tracedPostAuthor}]`
                                         ) : (
                                             <button
+                                                type="button"
                                                 onClick={handleTracePostAuthor}
                                                 style={{ background: '#f5f5f5', border: '1px solid #ddd', borderRadius: '3px', cursor: 'pointer', padding: '2px 5px' }}
                                             >
@@ -348,6 +370,7 @@ export function PostDetailPage() {
 
                         <div className="post-actions" style={{ display: 'flex', gap: '10px' }}>
                             <button
+                                type="button"
                                 onClick={handlePostLike}
                                 className={`post-like-btn ${post.is_liked ? 'liked' : ''}`}
                             >
@@ -356,6 +379,7 @@ export function PostDetailPage() {
 
                             {isAdmin && (
                                 <button
+                                    type="button"
                                     onClick={handleAdminPostDelete}
                                     style={{ background: '#ff4d4f', color: 'white', border: 'none', borderRadius: '4px', padding: '0 12px', cursor: 'pointer', fontSize: '14px' }}
                                 >
@@ -379,6 +403,7 @@ export function PostDetailPage() {
 
                             <div className="sort-controls">
                                 <button
+                                    type="button"
                                     onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
                                     className="sort-order-btn"
                                     title={sortOrder === 'desc' ? '내림차순' : '오름차순'}
@@ -414,12 +439,25 @@ export function PostDetailPage() {
                         </div>
 
                         <form onSubmit={handleCommentSubmit} className="comment-form">
+
+                            {replyingTo && (
+                                <div style={{ marginBottom: '8px', fontSize: '13px', color: '#0056b3', display: 'flex', alignItems: 'center' }}>
+                                    <span>원댓글에 답글을 작성 중입니다.</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setReplyingTo(null)}
+                                        style={{ marginLeft: '10px', background: 'none', border: 'none', color: '#ff4d4f', cursor: 'pointer', fontWeight: 'bold' }}
+                                    >
+                                        ✕ 취소
+                                    </button>
+                                </div>
+                            )}
                             <div className="comment-input-wrapper">
                                 <input
                                     type="text"
                                     value={newComment}
                                     onChange={(e) => setNewComment(e.target.value)}
-                                    placeholder="댓글을 입력하세요"
+                                    placeholder={replyingTo ? "대댓글을 입력하세요" : "댓글을 입력하세요"}
                                     className="comment-input"
                                 />
                                 <div className="comment-options">
