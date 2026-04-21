@@ -65,9 +65,17 @@ DatabaseManager().connect(
 FirebaseManager().initialize()
 
 # 백그라운드 스케줄러 시작 (알림 등)
-if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug:
-    # reloader 환경에서는 두 번 실행되는 것을 방지
-    NotificationScheduler().start()
+try:
+    import fcntl
+    app.scheduler_lock = open("scheduler.lock", "w")
+    fcntl.flock(app.scheduler_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    
+    if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug:
+        # reloader 환경에서는 두 번 실행되는 것을 방지
+        NotificationScheduler().start()
+except Exception:
+    # 이미 락을 획득한 다른 Gunicorn 워커가 스케줄러를 실행 중이므로 패스
+    pass
 
 
 # 블루프린트 등록

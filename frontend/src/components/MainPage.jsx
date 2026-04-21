@@ -18,52 +18,70 @@ export function MainPage() {
     // PWA 설치 가능 여부 상태
     const [isInstallable, setIsInstallable] = useState(false);
 
+    // 알림 권한 상태: 'default' | 'granted' | 'denied'
+    const [notificationStatus, setNotificationStatus] = useState(
+        typeof Notification !== 'undefined' ? Notification.permission : 'denied'
+    );
+
     // 푸시 알림 토큰 요청 로직
     // 푸시 알림 토큰 요청 로직
     const tokenRequestSent = useRef(false);
 
+    // 이미 권한이 부여된 경우 자동으로 토큰 등록
     useEffect(() => {
-        const requestPermission = async () => {
-            // StrictMode로 인한 중복 호출 방지
+        const registerTokenIfGranted = async () => {
             if (tokenRequestSent.current) return;
             tokenRequestSent.current = true;
-            if (localStorage.getItem("login") !== "true") {
-                console.log('User not logged in, skipping token registration.');
-                return;
-            }
+            if (localStorage.getItem("login") !== "true") return;
+            if (Notification.permission !== 'granted') return;
 
             try {
-                const permission = await Notification.requestPermission();
-                if (permission === 'granted') {
-                    const token = await getToken(messaging);
-                    if (token) {
-                        try {
-                            const response = await fetch(`${API_BASE_URL}/notifications/register-token`, {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                },
-                                body: JSON.stringify({ token }),
-                                credentials: 'include',
-                            });
-                            
-                            if (response.ok) {
-                                console.log("알림 토큰 발급 및 백엔드 전송 성공");
-                            } else {
-                                console.error("알림 토큰 백엔드 전송 실패:", response.status);
-                            }
-                        } catch (err) {
-                            console.error("알림 토큰 백엔드 전송 중 오류 발생:", err);
-                        }
+                const token = await getToken(messaging);
+                if (token) {
+                    const response = await fetch(`${API_BASE_URL}/notifications/register-token`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ token }),
+                        credentials: 'include',
+                    });
+                    if (response.ok) {
+                        console.log("알림 토큰 발급 및 백엔드 전송 성공");
+                    } else {
+                        console.error("알림 토큰 백엔드 전송 실패:", response.status);
                     }
                 }
             } catch (error) {
-                console.error('An error occurred while retrieving token:', error);
+                console.error('토큰 등록 중 오류:', error);
             }
         };
 
-        requestPermission();
+        registerTokenIfGranted();
     }, []);
+
+    // 알림 권한 요청 핸들러 (버튼 클릭 시)
+    const handleNotificationClick = async () => {
+        try {
+            const permission = await Notification.requestPermission();
+            setNotificationStatus(permission);
+
+            if (permission === 'granted') {
+                const token = await getToken(messaging);
+                if (token) {
+                    const response = await fetch(`${API_BASE_URL}/notifications/register-token`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ token }),
+                        credentials: 'include',
+                    });
+                    if (response.ok) {
+                        console.log("알림 토큰 발급 및 백엔드 전송 성공");
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('알림 권한 요청 중 오류:', error);
+        }
+    };
 
     // PWA 설치 버튼 표시 여부 감지
     useEffect(() => {
@@ -185,6 +203,17 @@ export function MainPage() {
                         <div className="install-text-group">
                             <h2>앱 설치하기</h2>
                             <span className="install-desc">홈 화면에 추가하여 빠르게 접속하세요</span>
+                        </div>
+                        <div className="install-arrow">➜</div>
+                    </section>
+                )}
+
+                {notificationStatus === 'default' && (
+                    <section className="menu-card notify-section" onClick={handleNotificationClick}>
+                        <div className="install-icon">🔔</div>
+                        <div className="install-text-group">
+                            <h2>알림 허용하기</h2>
+                            <span className="install-desc">알림을 키고 급식 메뉴 알림 등 다양한 정보를 받아보세요!</span>
                         </div>
                         <div className="install-arrow">➜</div>
                     </section>

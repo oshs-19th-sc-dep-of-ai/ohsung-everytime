@@ -41,7 +41,7 @@ def send_lunch_menu_notification():
                     icon='/vite.svg',
                     badge='/vite.svg'
                 ),
-                fcm_options=messaging.WebpushFCMOptions(link='https://coshsc.kr/meal')
+                fcm_options=messaging.WebpushFCMOptions(link='https://square.coshsc.kr/meal')
             ),
             tokens=batch_tokens
         )
@@ -61,8 +61,8 @@ def send_lunch_menu_notification():
                 
                 if failed_tokens:
                     # failed_tokens DB에서 삭제
-                    format_strings = ','.join(['%s'] * len(failed_tokens))
-                    db.query(f"DELETE FROM fcm_tokens WHERE token IN ({format_strings})", *failed_tokens)
+                    for token in failed_tokens:
+                        db.query("DELETE FROM fcm_tokens WHERE token = %(token)s", token=token)
                     db.commit()
                     print(f"[Scheduler] 유효하지 않은 토큰 {len(failed_tokens)}개 삭제됨.")
                     
@@ -122,8 +122,8 @@ def send_dinner_menu_notification():
                             failed_tokens.append(batch_tokens[idx])
                 
                 if failed_tokens:
-                    format_strings = ','.join(['%s'] * len(failed_tokens))
-                    db.query(f"DELETE FROM fcm_tokens WHERE token IN ({format_strings})", *failed_tokens)
+                    for token in failed_tokens:
+                        db.query("DELETE FROM fcm_tokens WHERE token = %(token)s", token=token)
                     db.commit()
                     print(f"[Scheduler] 유효하지 않은 토큰 {len(failed_tokens)}개 삭제됨.")
                     

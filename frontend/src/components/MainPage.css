@@ -148,6 +148,19 @@
 }
 
 /* =========================================
+   1.6. Notify Section (알림 허용)
+========================================= */
+.notify-section {
+    background: linear-gradient(105deg, #F59E0B 0%, #FBBF24 100%);
+    height: 72px;
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    color: white;
+    gap: 14px;
+}
+
+/* =========================================
    2. Board Section (게시판)
 ========================================= */
 .board-section {
