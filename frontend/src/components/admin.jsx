@@ -365,61 +365,163 @@ function TraceAuthorTab() {
   );
 }
 
-// 메인 AdminPage
-const TABS = [
+// 탭 4: 비밀번호 변경
+function ChangePasswordTab() {
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+
+  const changePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setResult({ type: "error", message: "모든 필드를 입력해주세요." });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setResult({ type: "error", message: "새 비밀번호가 일치하지 않습니다." });
+      return;
+    }
+    setLoading(true);
+    setResult(null);
+    try {
+      const data = await apiFetch("/change_password", {
+        method: "POST",
+        body: JSON.stringify({
+          current_password: currentPassword,
+          new_password: newPassword
+        })
+      });
+      setResult({ type: "success", message: data.message });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (e) {
+      setResult({ type: "error", message: e.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div>
+      <p className="admin-section-title">계정 설정</p>
+      <div className="admin-card">
+        <div className="admin-input-group">
+          <input
+            className="admin-input"
+            type="password"
+            placeholder="현재 비밀번호"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+          />
+          <input
+            className="admin-input"
+            type="password"
+            placeholder="새 비밀번호"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+          />
+          <input
+            className="admin-input"
+            type="password"
+            placeholder="새 비밀번호 확인"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+          />
+        </div>
+
+        <div style={{ marginTop: '16px' }}>
+          <LoadingBtn
+            loading={loading}
+            onClick={changePassword}
+            className="admin-btn--primary"
+            style={{ width: '100%' }}
+          >
+            비밀번호 변경
+          </LoadingBtn>
+        </div>
+
+        {result && (
+          <div className={`admin-result admin-result--${result.type}`}>
+            {result.type === "success" ? "✅" : "⚠️"} {result.message}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// 메인 AdminPage (설정 페이지)
+const ADMIN_TABS = [
   { id: "history", label: "📋 수정 이력" },
   { id: "push", label: "📣 푸시 알림" },
 ];
 
 export default function AdminPage() {
-  const [activeTab, setActiveTab] = useState("history");
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [activeAdminTab, setActiveAdminTab] = useState("history");
 
   const status = localStorage.getItem("status");
-  const userName = localStorage.getItem("student_name");
-
-  // 관리자 아니면 접근 차단
-  if (status !== "admin") {
-    return (
-      <div className="admin-page">
-        <div className="admin-forbidden">
-          <div className="admin-forbidden__icon">🚫</div>
-          <div className="admin-forbidden__title">접근 권한이 없습니다</div>
-          <div className="admin-forbidden__sub">
-            관리자 계정으로 로그인해주세요.
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const userName = localStorage.getItem("student_name") || "사용자";
+  const isAdmin = status === "admin";
 
   return (
     <div className="admin-page">
       {/* 헤더 */}
-      <header className="admin-header">
+      <header className="admin-header" style={{ justifyContent: 'space-between' }}>
         <div className="admin-header__left">
-          <span className="admin-header__badge">ADMIN</span>
-          <span className="admin-header__title">오성광장 관리자</span>
+          <span className="admin-header__badge">{isAdmin ? "ADMIN" : "USER"}</span>
+          <span className="admin-header__title">{showAdminPanel ? "어드민 패널" : "설정"}</span>
         </div>
         <span className="admin-header__user">🛡 {userName}</span>
       </header>
 
-      {/* 탭 */}
-      <div className="admin-tabs">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            className={`admin-tab${activeTab === tab.id ? " admin-tab--active" : ""}`}
-            onClick={() => setActiveTab(tab.id)}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
       {/* 본문 */}
       <main className="admin-body">
-        {activeTab === "history" && <CommentHistoryTab />}
-        {activeTab === "push" && <PushNotificationTab />}
+        {!showAdminPanel ? (
+          <>
+            <ChangePasswordTab />
+            
+            {isAdmin && (
+              <div style={{ marginTop: '24px', textAlign: 'center' }}>
+                <button 
+                  className="admin-btn admin-btn--primary" 
+                  style={{ width: '100%', backgroundColor: '#333' }}
+                  onClick={() => setShowAdminPanel(true)}
+                >
+                  ⚙️ 어드민 패널 접속
+                </button>
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <div style={{ marginBottom: '16px' }}>
+              <button 
+                className="admin-btn admin-btn--secondary" 
+                onClick={() => setShowAdminPanel(false)}
+              >
+                ← 설정으로 돌아가기
+              </button>
+            </div>
+            {/* 어드민 탭 */}
+            <div className="admin-tabs">
+              {ADMIN_TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  className={`admin-tab${activeAdminTab === tab.id ? " admin-tab--active" : ""}`}
+                  onClick={() => setActiveAdminTab(tab.id)}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {activeAdminTab === "history" && <CommentHistoryTab />}
+            {activeAdminTab === "push" && <PushNotificationTab />}
+          </>
+        )}
       </main>
     </div>
   );

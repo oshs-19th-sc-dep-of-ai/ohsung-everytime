@@ -33,7 +33,8 @@ export function MainPage() {
             if (tokenRequestSent.current) return;
             tokenRequestSent.current = true;
             if (localStorage.getItem("login") !== "true") return;
-            if (Notification.permission !== 'granted') return;
+            if (!messaging) return; // FCM 미지원 브라우저
+            if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
 
             try {
                 const token = await getToken(messaging, {
@@ -66,7 +67,7 @@ export function MainPage() {
             const permission = await Notification.requestPermission();
             setNotificationStatus(permission);
 
-            if (permission === 'granted') {
+            if (permission === 'granted' && messaging) {
                 const token = await getToken(messaging, {
                     vapidKey: 'BOxnVSvFhuK-6UD7fXnnGPcoU73mPbXnk5HQcLYTZom6hRoPVnVKc9xEIA7mZsM5ap3HgSz6V9DaU4a1T2TtBao'
                 });

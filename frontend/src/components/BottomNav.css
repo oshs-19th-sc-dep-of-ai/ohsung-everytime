@@ -1,0 +1,156 @@
+/* === 하단 네비게이션 바 === */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+
+    /* 글래스모피즘 배경 */
+    background: rgba(255, 255, 255, 0.82);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(229, 231, 235, 0.6);
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.06);
+}
+
+.bottom-nav-inner {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 6px 8px;
+    /* iPhone safe area 대응 */
+    padding-bottom: max(6px, env(safe-area-inset-bottom));
+}
+
+/* 각 네비 아이템 */
+.bottom-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    flex: 1;
+    padding: 6px 0;
+    cursor: pointer;
+    position: relative;
+    border: none;
+    background: none;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.15s ease;
+}
+
+.bottom-nav-item:active {
+    transform: scale(0.92);
+}
+
+/* 아이콘 래퍼 */
+.nav-icon-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 32px;
+    border-radius: 16px;
+    transition: background-color 0.25s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.bottom-nav-item.active .nav-icon-wrapper {
+    background-color: rgba(79, 70, 229, 0.1);
+    transform: scale(1.05);
+}
+
+/* 아이콘 SVG */
+.nav-icon {
+    width: 22px;
+    height: 22px;
+    color: var(--text-sub);
+    transition: color 0.25s ease;
+}
+
+.bottom-nav-item.active .nav-icon {
+    color: var(--primary);
+}
+
+/* 라벨 */
+.nav-label {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text-sub);
+    transition: color 0.25s ease, font-weight 0.25s ease;
+    letter-spacing: -0.2px;
+    line-height: 1.2;
+}
+
+.bottom-nav-item.active .nav-label {
+    color: var(--primary);
+    font-weight: 700;
+}
+
+/* 활성 탭 상단 인디케이터 점 */
+.nav-active-dot {
+    position: absolute;
+    top: -2px;
+    left: 50%;
+    transform: translateX(-50%) scaleX(0);
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background-color: var(--primary);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.bottom-nav-item.active .nav-active-dot {
+    transform: translateX(-50%) scaleX(1);
+}
+
+/* 글쓰기 (가운데 강조 버튼) */
+.bottom-nav-item.write-btn .nav-icon-wrapper {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--primary) 0%, #6366F1 100%);
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
+    transition: box-shadow 0.25s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.bottom-nav-item.write-btn .nav-icon-wrapper:hover {
+    box-shadow: 0 6px 20px rgba(79, 70, 229, 0.45);
+}
+
+.bottom-nav-item.write-btn:active .nav-icon-wrapper {
+    transform: scale(0.95);
+}
+
+.bottom-nav-item.write-btn .nav-icon {
+    color: white;
+    width: 24px;
+    height: 24px;
+}
+
+.bottom-nav-item.write-btn .nav-label {
+    color: var(--primary);
+    font-weight: 600;
+    margin-top: 2px;
+}
+
+/* 하단 네비 때문에 페이지 내용이 잘리지 않게 여백 확보 */
+.has-bottom-nav {
+    padding-bottom: 80px;
+}
+
+/* 데스크톱 이상에서 하단 네비 숨기기 (선택사항, 필요 시 주석 해제) */
+/*
+@media (min-width: 769px) {
+    .bottom-nav {
+        display: none;
+    }
+    .has-bottom-nav {
+        padding-bottom: 0;
+    }
+}
+*/
