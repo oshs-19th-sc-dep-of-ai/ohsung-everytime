@@ -93,3 +93,48 @@ def check_session():
         "is_admin": bool(session.get("is_admin")),
         "status": "success" if logged else "unauthorized"
     }), 200
+
+
+# 비밀번호 변경
+@auth_bp.route('/change_password', methods=['POST'])
+def change_password():
+    student_id = session.get('student_id')
+    if not student_id:
+        return jsonify({"message": "로그인이 필요합니다.", "status": "error"}), 401
+
+    data = request.get_json(silent=True) or {}
+    current_password = data.get('current_password')
+    new_password = data.get('new_password')
+
+    if not current_password or not new_password:
+        return jsonify({"message": "현재 비밀번호와 새 비밀번호를 모두 입력해주세요.", "status": "error"}), 400
+
+    db = DatabaseManager()
+    
+    # 현재 비밀번호 확인
+    student = db.query(
+        """
+        SELECT student_id FROM Students
+        WHERE student_id = %(student_id)s AND student_pw = SHA2(%(current_password)s, 256)
+        """,
+        student_id=student_id,
+        current_password=current_password
+    ).result
+
+    if not student:
+        return jsonify({"message": "현재 비밀번호가 일치하지 않습니다.", "status": "error"}), 401
+
+    # 새 비밀번호 업데이트
+    db.query(
+        """
+        UPDATE Students
+        SET student_pw = SHA2(%(new_password)s, 256)
+        WHERE student_id = %(student_id)s
+        """,
+        new_password=new_password,
+        student_id=student_id
+    )
+    db.commit()
+
+    return jsonify({"message": "비밀번호가 성공적으로 변경되었습니다.", "status": "success"}), 200
+

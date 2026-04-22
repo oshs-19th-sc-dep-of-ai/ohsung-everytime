@@ -120,8 +120,8 @@ def admin_push_notification():
             notification=messaging.Notification(title=title, body=body),
             webpush=messaging.WebpushConfig(
                 notification=messaging.WebpushNotification(
-                    icon='/vite.svg',
-                    badge='/vite.svg'
+                    icon='/icon_notification.svg',
+                    badge='/icon_notification.svg'
                 )
             ),
             tokens=token_list

@@ -31,8 +31,8 @@ messaging.onBackgroundMessage((payload) => {
         const body = payload.data?.body ?? '';
         self.registration.showNotification(title, {
             body: body,
-            icon: '/vite.svg',
-            badge: '/vite.svg',
+            icon: '/icon_notification.svg',
+            badge: '/icon_notification.svg',
             data: {
                 link: payload.fcmOptions?.link || payload.data?.link || '/meal'
             }
@@ -55,9 +55,18 @@ self.addEventListener('notificationclick', function(event) {
     // 이미 열려있는 창이 있는지 확인
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+            // targetUrl에서 pathname 추출 (전체 URL이면 파싱, 상대 경로면 그대로 사용)
+            let targetPath;
+            try {
+                targetPath = new URL(targetUrl).pathname;
+            } catch (e) {
+                targetPath = targetUrl; // 상대 경로
+            }
+
             for (let i = 0; i < windowClients.length; i++) {
                 const client = windowClients[i];
-                if (client.url.includes(targetUrl) && 'focus' in client) {
+                const clientPath = new URL(client.url).pathname;
+                if (clientPath === targetPath && 'focus' in client) {
                     return client.focus();
                 }
             }
