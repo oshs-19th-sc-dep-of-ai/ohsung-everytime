@@ -57,11 +57,6 @@ export function BottomNav() {
     const navigate = useNavigate();
     const location = useLocation();
 
-    // 로그인 화면에서는 하단 네비를 숨긴다
-    if (location.pathname === '/login') {
-        return null;
-    }
-
     /**
      * 현재 경로가 해당 탭에 해당하는지 판단.
      * - '/' 홈은 정확 매치
@@ -132,6 +127,11 @@ export function BottomNav() {
             document.removeEventListener('touchend', handleTouchEnd);
         };
     }, [location.pathname, navigate]);
+
+    // 로그인 화면에서는 하단 네비를 숨긴다
+    if (location.pathname === '/login') {
+        return null;
+    }
 
     return (
         <nav className="bottom-nav" id="bottom-navigation">

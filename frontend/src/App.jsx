@@ -79,7 +79,7 @@ function PageWrapper({ children, direction }) {
       exit="exit"
       variants={pageVariants}
       transition={{ duration: 0.3, ease: "easeInOut" }}
-      style={{ width: '100%', height: '100%' }}
+      style={{ width: '100%' }}
     >
       {children}
     </motion.div>
@@ -214,8 +214,10 @@ function App() {
       <Toast message={toastMessage} onClose={handleToastClose} />
       <BrowserRouter>
         <Header />
+        <div style={{ overflowX: 'hidden', width: '100%', minHeight: '100vh', paddingBottom: '90px' }}>
+          <AnimatedRoutes />
+        </div>
         <BottomNav />
-        <AnimatedRoutes />
       </BrowserRouter>
     </>
   );
