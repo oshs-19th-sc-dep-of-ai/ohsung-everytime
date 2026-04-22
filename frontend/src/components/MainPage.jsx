@@ -36,7 +36,9 @@ export function MainPage() {
             if (Notification.permission !== 'granted') return;
 
             try {
-                const token = await getToken(messaging);
+                const token = await getToken(messaging, {
+                    vapidKey: 'BOxnVSvFhuK-6UD7fXnnGPcoU73mPbXnk5HQcLYTZom6hRoPVnVKc9xEIA7mZsM5ap3HgSz6V9DaU4a1T2TtBao'
+                });
                 if (token) {
                     const response = await fetch(`${API_BASE_URL}/notifications/register-token`, {
                         method: 'POST',
@@ -65,7 +67,9 @@ export function MainPage() {
             setNotificationStatus(permission);
 
             if (permission === 'granted') {
-                const token = await getToken(messaging);
+                const token = await getToken(messaging, {
+                    vapidKey: 'BOxnVSvFhuK-6UD7fXnnGPcoU73mPbXnk5HQcLYTZom6hRoPVnVKc9xEIA7mZsM5ap3HgSz6V9DaU4a1T2TtBao'
+                });
                 if (token) {
                     const response = await fetch(`${API_BASE_URL}/notifications/register-token`, {
                         method: 'POST',

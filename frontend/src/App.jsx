@@ -1,7 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { API_BASE_URL } from "./config";
+import { messaging, onMessage } from "./firebase";
 import { MainPage } from "./components/MainPage";
 import { Header } from "./components/Header.jsx";
 import { PostListPage } from "./components/PostListPage.jsx";
@@ -10,6 +11,7 @@ import MealPage from "./components/meal.jsx";
 import { PostWritePage } from "./components/PostWritePage.jsx";
 import { Login } from "./components/login.jsx";
 import AdminPage from "./components/admin.jsx";
+import { Toast } from "./components/Toast.jsx";
 
 // ==========================================
 // 로그인 여부 확인 및 라우트 가드 설정
@@ -33,6 +35,12 @@ function PublicRoute({ children }) {
 }
 
 function App() {
+  const [toastMessage, setToastMessage] = useState(null);
+
+  const handleToastClose = useCallback(() => {
+    setToastMessage(null);
+  }, []);
+
   useEffect(() => {
     if (isLoggedIn()) {
       axios
@@ -50,9 +58,23 @@ function App() {
     }
   }, []);
 
+  // 포그라운드 푸시 알림 수신 처리 — 인앱 토스트로 표시
+  useEffect(() => {
+    const unsubscribe = onMessage(messaging, (payload) => {
+      console.log('[Foreground] 메시지 수신:', payload);
+      const title = payload.notification?.title || payload.data?.title || '새 알림';
+      const body = payload.notification?.body || payload.data?.body || '';
+      const link = payload.fcmOptions?.link || payload.data?.link || null;
+      setToastMessage({ title, body, link });
+    });
+    return () => unsubscribe();
+  }, []);
+
   return (
-    <BrowserRouter>
-      <Header />
+    <>
+      <Toast message={toastMessage} onClose={handleToastClose} />
+      <BrowserRouter>
+        <Header />
 
       <Routes>
         <Route
@@ -118,9 +140,10 @@ function App() {
           }
         />
 
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </>
   );
 }
 

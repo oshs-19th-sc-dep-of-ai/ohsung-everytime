@@ -146,8 +146,8 @@ def add_comment(post_id):
                         ),
                         webpush=messaging.WebpushConfig(
                             notification=messaging.WebpushNotification(
-                                icon='/comment.svg',
-                                badge='/comment.svg'
+                                icon='/icon_comment.svg',
+                                badge='/icon_comment.svg'
                             ),
                             fcm_options=messaging.WebpushFCMOptions(link=target_url)
                         ),
@@ -160,7 +160,7 @@ def add_comment(post_id):
                         failed_tokens = []
                         for idx, resp in enumerate(response.responses):
                             if not resp.success:
-                                if resp.exception and resp.exception.code in ['messaging/invalid-registration-token', 'messaging/registration-token-not-registered']:
+                                if resp.exception and resp.exception.code in ['INVALID_ARGUMENT', 'NOT_FOUND', 'UNREGISTERED']:
                                     failed_tokens.append(tokens[idx])
                                     
                         if failed_tokens:
