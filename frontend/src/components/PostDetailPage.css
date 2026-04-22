@@ -290,6 +290,15 @@
     border-top: 1px solid #eee;
 }
 
+.comment-form.reply-mode {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
 .comment-input-wrapper {
     display: flex;
     align-items: center;
@@ -404,6 +413,30 @@
     white-space: nowrap;
 }
 
-.comment-submit:hover {
+.comment-submit:hover:not(:disabled) {
     background-color: #0056b3;
+}
+
+.comment-submit:disabled {
+    background-color: #a0c4ff;
+    cursor: not-allowed;
+    opacity: 0.8;
+}
+
+/* 모바일 뷰 전용 스타일: 댓글 입력창을 댓글 목록 위로 이동 */
+@media screen and (max-width: 768px) {
+    .comments-section {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .comment-form {
+        order: -1; /* 가장 위로 올림 */
+        margin-top: 0;
+        padding-top: 0;
+        border-top: none;
+        margin-bottom: 24px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid #eee;
+    }
 }

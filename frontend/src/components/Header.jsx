@@ -1,13 +1,15 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useToast } from '../contexts/ToastContext.jsx';
 import './Header.css';
 
 export function Header() {
     const navigate = useNavigate();
     const location = useLocation();
+    const { showToast } = useToast();
 
     const handleLogout = () => {
-        alert("로그아웃 되었습니다.");
+        showToast("로그아웃 되었습니다.");
         localStorage.clear();
         // replace: true 옵션을 주어 이전 페이지 기록을 지우고 로그인 화면으로 완벽히 강제 이동
         navigate("/login", { replace: true });

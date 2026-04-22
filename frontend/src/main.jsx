@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
+import { ToastProvider } from './contexts/ToastContext.jsx'
 
 // PWA 설치 프롬프트 이벤트를 저장하여 커스텀 버튼에서 사용
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -19,6 +20,8 @@ window.addEventListener('appinstalled', () => {
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <App />
+    <ToastProvider>
+      <App />
+    </ToastProvider>
   </StrictMode>,
 )

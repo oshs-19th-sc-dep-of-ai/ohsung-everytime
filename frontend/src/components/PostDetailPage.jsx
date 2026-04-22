@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE_URL } from "../config";
+import { useToast } from '../contexts/ToastContext.jsx';
 import './PostDetailPage.css';
 
 const POPULAR_COMMENT_THRESHOLD = 5;
@@ -40,6 +41,7 @@ export function PostDetailPage() {
     const [newComment, setNewComment] = useState("");
     const [isAnonymous, setIsAnonymous] = useState(true);
     const [isLoading, setIsLoading] = useState(true);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState(null);
 
 
@@ -52,6 +54,9 @@ export function PostDetailPage() {
     // 정렬 관련 상태
     const [sortType, setSortType] = useState('latest');
     const [sortOrder, setSortOrder] = useState('desc');
+
+    // 토스트 알림 상태 (전역)
+    const { showToast } = useToast();
 
     // 로그인 정보를 기반으로 관리자 여부 확인
     const isAdmin = localStorage.getItem("status") === "admin";
@@ -108,9 +113,20 @@ export function PostDetailPage() {
     }, [postId]);
 
     useEffect(() => {
+        // 즉시 맨 위로 스크롤
+        window.scrollTo(0, 0); 
+        
+        // 애니메이션(0.3s)이 완료된 후 혹시나 스크롤이 유지되는 경우를 대비해 한번 더 시도
+        const timer = setTimeout(() => {
+            window.scrollTo(0, 0);
+        }, 350);
+
         const controller = new AbortController();
         fetchPostAndComments(controller.signal, true);
-        return () => controller.abort();
+        return () => {
+            clearTimeout(timer);
+            controller.abort();
+        };
     }, [fetchPostAndComments]);
 
     const topPopularComments = useMemo(() => {
@@ -164,8 +180,8 @@ export function PostDetailPage() {
                 }));
             }
         } catch (err) {
-            if (err.response?.status === 401) alert("로그인이 필요합니다.");
-            else alert("게시글 좋아요 처리에 실패했습니다.");
+            if (err.response?.status === 401) showToast("로그인이 필요합니다.");
+            else showToast("게시글 좋아요 처리에 실패했습니다.");
         }
     };
 
@@ -175,10 +191,10 @@ export function PostDetailPage() {
 
         try {
             await axios.delete(`${API_BASE_URL}/admin/posts/${postId}`, { withCredentials: true });
-            alert("게시글이 강제 삭제되었습니다.");
+            showToast("게시글이 강제 삭제되었습니다.");
             navigate(-1);
         } catch (err) {
-            alert(err.response?.data?.message || "게시글 삭제에 실패했습니다.");
+            showToast(err.response?.data?.message || "게시글 삭제에 실패했습니다.");
         }
     };
 
@@ -190,15 +206,16 @@ export function PostDetailPage() {
                 setTracedPostAuthor(`${student_name} (${author_id})`);
             }
         } catch (err) {
-            alert(err.response?.data?.message || "게시글 작성자 조회에 실패했습니다.");
+            showToast(err.response?.data?.message || "게시글 작성자 조회에 실패했습니다.");
         }
     };
 
     const handleCommentSubmit = async (e) => {
         e.preventDefault();
-        if (!newComment.trim()) return;
+        if (!newComment.trim() || isSubmitting) return;
 
         try {
+            setIsSubmitting(true);
             await axios.post(`${API_BASE_URL}/posts/${postId}/comments`, {
                 content: newComment,
                 is_anonymous: isAnonymous,
@@ -207,12 +224,14 @@ export function PostDetailPage() {
 
             setNewComment("");
             setReplyingTo(null); // 전송 후 상태 초기화
-            alert("댓글이 작성되었습니다.");
+            showToast("댓글이 작성되었습니다.");
 
             fetchPostAndComments(null, false);
         } catch (err) {
-            if (err.response?.status === 401) alert("로그인이 필요합니다.");
-            else alert(err.response?.data?.message || "댓글 작성에 실패했습니다.");
+            if (err.response?.status === 401) showToast("로그인이 필요합니다.");
+            else showToast(err.response?.data?.message || "댓글 작성에 실패했습니다.");
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -224,8 +243,8 @@ export function PostDetailPage() {
                 fetchPostAndComments(null, false);
             }
         } catch (err) {
-            if (err.response?.status === 401) alert("로그인이 필요합니다.");
-            else alert("좋아요 처리에 실패했습니다.");
+            if (err.response?.status === 401) showToast("로그인이 필요합니다.");
+            else showToast("좋아요 처리에 실패했습니다.");
         }
     };
 
@@ -235,10 +254,10 @@ export function PostDetailPage() {
 
         try {
             await axios.delete(`${API_BASE_URL}/admin/comments/${commentId}`, { withCredentials: true });
-            alert("댓글이 강제 삭제되었습니다.");
+            showToast("댓글이 강제 삭제되었습니다.");
             fetchPostAndComments(null, false);
         } catch (err) {
-            alert(err.response?.data?.message || "댓글 삭제에 실패했습니다.");
+            showToast(err.response?.data?.message || "댓글 삭제에 실패했습니다.");
         }
     };
 
@@ -253,7 +272,7 @@ export function PostDetailPage() {
                 }));
             }
         } catch (err) {
-            alert(err.response?.data?.message || "작성자 조회에 실패했습니다.");
+            showToast(err.response?.data?.message || "작성자 조회에 실패했습니다.");
         }
     };
 
@@ -323,6 +342,51 @@ export function PostDetailPage() {
             </div>
         );
     };
+
+    const commentInputForm = (isReplyForm) => (
+        <form onSubmit={handleCommentSubmit} className={`comment-form ${isReplyForm ? 'reply-mode' : ''}`}>
+            {isReplyForm && (
+                <div style={{ marginBottom: '8px', fontSize: '13px', color: '#0056b3', display: 'flex', alignItems: 'center' }}>
+                    <span>원댓글에 답글을 작성 중입니다.</span>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setReplyingTo(null);
+                            setNewComment("");
+                        }}
+                        style={{ marginLeft: '10px', background: 'none', border: 'none', color: '#ff4d4f', cursor: 'pointer', fontWeight: 'bold' }}
+                    >
+                        ✕ 취소
+                    </button>
+                </div>
+            )}
+            <div className="comment-input-wrapper">
+                <input
+                    type="text"
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder={isReplyForm ? "대댓글을 입력하세요" : "댓글을 입력하세요"}
+                    className="comment-input"
+                    autoFocus={isReplyForm}
+                />
+                <div className="comment-options">
+                    <label className="anonymous-checkbox-label">
+                        <input
+                            type="checkbox"
+                            checked={isAnonymous}
+                            onChange={(e) => setIsAnonymous(e.target.checked)}
+                            className="hidden-checkbox"
+                        />
+                        <span className="custom-checkbox"></span>
+                        익명
+                    </label>
+                    <button type="submit" className="comment-submit" disabled={isSubmitting}>
+                        {isSubmitting ? '등록 중...' : '등록'}
+                    </button>
+                </div>
+            </div>
+        </form>
+    );
 
     if (isLoading) return <div className="loading">게시글 로딩 중...</div>;
 
@@ -426,6 +490,14 @@ export function PostDetailPage() {
                                 processedComments.map(comment => (
                                     <div key={comment.comment_id} className="comment-thread">
                                         {renderCommentItem(comment)}
+
+                                        {/* 대댓글 입력창 위치 */}
+                                        {replyingTo === comment.comment_id && (
+                                            <div className="reply-form-container" style={{ marginLeft: '32px', marginBottom: '16px' }}>
+                                                {commentInputForm(true)}
+                                            </div>
+                                        )}
+
                                         {comment.replies && comment.replies.length > 0 && (
                                             <div className="replies-list">
                                                 {comment.replies.map(reply => renderCommentItem(reply))}
@@ -438,43 +510,8 @@ export function PostDetailPage() {
                             )}
                         </div>
 
-                        <form onSubmit={handleCommentSubmit} className="comment-form">
-
-                            {replyingTo && (
-                                <div style={{ marginBottom: '8px', fontSize: '13px', color: '#0056b3', display: 'flex', alignItems: 'center' }}>
-                                    <span>원댓글에 답글을 작성 중입니다.</span>
-                                    <button
-                                        type="button"
-                                        onClick={() => setReplyingTo(null)}
-                                        style={{ marginLeft: '10px', background: 'none', border: 'none', color: '#ff4d4f', cursor: 'pointer', fontWeight: 'bold' }}
-                                    >
-                                        ✕ 취소
-                                    </button>
-                                </div>
-                            )}
-                            <div className="comment-input-wrapper">
-                                <input
-                                    type="text"
-                                    value={newComment}
-                                    onChange={(e) => setNewComment(e.target.value)}
-                                    placeholder={replyingTo ? "대댓글을 입력하세요" : "댓글을 입력하세요"}
-                                    className="comment-input"
-                                />
-                                <div className="comment-options">
-                                    <label className="anonymous-checkbox-label">
-                                        <input
-                                            type="checkbox"
-                                            checked={isAnonymous}
-                                            onChange={(e) => setIsAnonymous(e.target.checked)}
-                                            className="hidden-checkbox"
-                                        />
-                                        <span className="custom-checkbox"></span>
-                                        익명
-                                    </label>
-                                    <button type="submit" className="comment-submit">등록</button>
-                                </div>
-                            </div>
-                        </form>
+                        {/* 메인 댓글 입력창 */}
+                        {!replyingTo && commentInputForm(false)}
                     </div>
                 </>
             ) : (

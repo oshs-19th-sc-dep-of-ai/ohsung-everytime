@@ -12,8 +12,8 @@ import MealPage from "./components/meal.jsx";
 import { PostWritePage } from "./components/PostWritePage.jsx";
 import { Login } from "./components/login.jsx";
 import AdminPage from "./components/admin.jsx";
-import { Toast } from "./components/Toast.jsx";
 import { BottomNav } from "./components/BottomNav.jsx";
+import { useToast } from "./contexts/ToastContext.jsx";
 
 // ==========================================
 // 로그인 여부 확인 및 라우트 가드 설정
@@ -173,13 +173,13 @@ function AnimatedRoutes() {
 }
 
 function App() {
-  const [toastMessage, setToastMessage] = useState(null);
-
-  const handleToastClose = useCallback(() => {
-    setToastMessage(null);
-  }, []);
+  const { showToastWithLink } = useToast();
 
   useEffect(() => {
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
+    
     if (isLoggedIn()) {
       axios
         .get(`${API_BASE_URL}/check_session`, { withCredentials: true })
@@ -204,14 +204,13 @@ function App() {
       const title = payload.notification?.title || payload.data?.title || '새 알림';
       const body = payload.notification?.body || payload.data?.body || '';
       const link = payload.fcmOptions?.link || payload.data?.link || null;
-      setToastMessage({ title, body, link });
+      showToastWithLink(title, body, link);
     });
     return () => unsubscribe();
   }, []);
 
   return (
     <>
-      <Toast message={toastMessage} onClose={handleToastClose} />
       <BrowserRouter>
         <Header />
         <div style={{ overflowX: 'hidden', width: '100%', minHeight: '100vh', paddingBottom: '90px' }}>

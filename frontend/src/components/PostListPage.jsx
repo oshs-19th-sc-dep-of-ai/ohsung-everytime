@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE_URL } from "../config";
@@ -36,10 +36,24 @@ const POSTS_PER_PAGE = 10;
 
 export function PostListPage() {
     const navigate = useNavigate(); // 라우팅을 위한 useNavigate 훅
-    const [posts, setPosts] = useState([]);
-    const [currentPage, setCurrentPage] = useState(1);
-    const [searchTerm, setSearchTerm] = useState("");
-    const [sortOrder, setSortOrder] = useState('latest');
+    const [posts, setPosts] = useState(() => {
+        const savedPosts = sessionStorage.getItem('board_posts');
+        try {
+            return savedPosts ? JSON.parse(savedPosts) : [];
+        } catch (e) {
+            return [];
+        }
+    });
+    const [currentPage, setCurrentPage] = useState(() => Number(sessionStorage.getItem('board_page')) || 1);
+    const [searchTerm, setSearchTerm] = useState(() => sessionStorage.getItem('board_search') || "");
+    const [sortOrder, setSortOrder] = useState(() => sessionStorage.getItem('board_sort') || 'latest');
+
+    // 상태 변경 시 sessionStorage에 저장
+    useEffect(() => {
+        sessionStorage.setItem('board_page', currentPage);
+        sessionStorage.setItem('board_search', searchTerm);
+        sessionStorage.setItem('board_sort', sortOrder);
+    }, [currentPage, searchTerm, sortOrder]);
 
     // 🌟 API 연동
     useEffect(() => {
@@ -62,13 +76,12 @@ export function PostListPage() {
                     }));
 
                     setPosts(fetchedPosts);
+                    sessionStorage.setItem('board_posts', JSON.stringify(fetchedPosts));
                 } else {
                     console.error("API 응답에서 게시글 데이터를 찾을 수 없습니다.", response.data);
-                    setPosts([]);
                 }
             } catch (error) {
                 console.error('게시글 목록을 불러오는 중 오류 발생:', error);
-                setPosts([]);
             }
         };
 
@@ -108,10 +121,55 @@ export function PostListPage() {
     const currentPosts = processedPosts.slice(indexOfFirstPost, indexOfLastPost);
     const totalPages = Math.ceil(processedPosts.length / POSTS_PER_PAGE);
 
-    useEffect(() => setCurrentPage(1), [searchTerm, sortOrder]);
+    const isMounted = useRef(false);
+    useEffect(() => {
+        if (isMounted.current) {
+            setCurrentPage(1);
+        } else {
+            isMounted.current = true;
+        }
+    }, [searchTerm, sortOrder]);
 
-    // 게시글 클릭 시 상세 페이지로 이동하는 핸들러
+    // 브라우저 기본 스크롤 복원 비활성화
+    useEffect(() => {
+        if ('scrollRestoration' in history) {
+            history.scrollRestoration = 'manual';
+        }
+    }, []);
+
+    // 게시글 데이터를 불러온 뒤, 이전 스크롤 위치가 있으면 복구
+    // AnimatePresence 애니메이션이 끝난 뒤 DOM 높이가 충분해질 때까지 재시도
+    // 게시글 데이터를 불러온 뒤, 이전 스크롤 위치가 있으면 복구
+    const scrollRestoredRef = useRef(false);
+    useEffect(() => {
+        if (scrollRestoredRef.current) return;
+        if (currentPosts.length === 0) return;
+
+        const savedScroll = sessionStorage.getItem('board_scroll');
+        if (!savedScroll) return;
+
+        const targetScroll = parseInt(savedScroll, 10);
+        if (isNaN(targetScroll) || targetScroll <= 0) {
+            sessionStorage.removeItem('board_scroll');
+            return;
+        }
+
+        // 즉시 스크롤 시도 (DOM이 렌더링된 상태라면 바로 적용됨)
+        window.scrollTo(0, targetScroll);
+        
+        // 애니메이션(0.3s)이 완료된 후 혹시나 스크롤이 풀렸을 경우를 대비해 한번 더 시도
+        const timer = setTimeout(() => {
+            window.scrollTo(0, targetScroll);
+            sessionStorage.removeItem('board_scroll');
+            scrollRestoredRef.current = true;
+        }, 350);
+
+        return () => clearTimeout(timer);
+    }, [currentPosts]);
+
+    // 게시글 클릭 시 상세 페이지로 이동하면서 스크롤 위치 저장
     const handlePostClick = (postId) => {
+        sessionStorage.setItem('board_scroll', window.scrollY);
         navigate(`/post/${postId}`);
     };
 

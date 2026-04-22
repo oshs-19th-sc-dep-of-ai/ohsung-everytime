@@ -1,33 +1,43 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE_URL } from "../config";
+import { useToast } from "../contexts/ToastContext.jsx";
 import './PostWritePage.css';
 
 export const PostWritePage = () => {
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
     const [isAnonymous, setIsAnonymous] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, []);
 
     const navigate = useNavigate();
+    const { showToast } = useToast();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        if (isSubmitting) return;
 
         if (!title.trim()) {
-            alert("제목을 입력해주세요.");
+            showToast("제목을 입력해주세요.");
             return;
         }
         if (!content.trim()) {
-            alert("내용을 입력해주세요.");
+            showToast("내용을 입력해주세요.");
             return;
         }
         if (title.length > 255) {
-            alert("제목은 255자 이내여야 합니다.");
+            showToast("제목은 255자 이내여야 합니다.");
             return;
         }
 
         try {
+            setIsSubmitting(true);
             const response = await axios.post(`${API_BASE_URL}/posts`, {
                 title: title,
                 content: content,
@@ -37,19 +47,21 @@ export const PostWritePage = () => {
             });
 
             if (response.data.status === 'success') {
-                alert('게시물이 등록되었습니다.');
+                showToast('게시물이 등록되었습니다.');
                 navigate(`/post/${response.data.data.post_id}`, { replace: true });
             }
         } catch (error) {
             console.error("게시물 작성 통신 오류:", error);
             if (error.response) {
-                alert(error.response.data.message || '게시물 작성에 실패했습니다.');
+                showToast(error.response.data.message || '게시물 작성에 실패했습니다.');
                 if (error.response.status === 401) {
                     navigate('/');
                 }
             } else {
-                alert('서버와 통신하는 중 오류가 발생했습니다.');
+                showToast('서버와 통신하는 중 오류가 발생했습니다.');
             }
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -101,8 +113,9 @@ export const PostWritePage = () => {
                             <button
                                 type="submit"
                                 className="submit-button"
+                                disabled={isSubmitting}
                             >
-                                완료
+                                {isSubmitting ? '작성 중...' : '완료'}
                             </button>
                         </div>
                     </div>
