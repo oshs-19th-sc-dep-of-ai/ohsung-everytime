@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import './BottomNav.css';
 
@@ -77,56 +77,7 @@ export function BottomNav() {
         return isActive(item);
     };
 
-    // 전역 스와이프 제스처 핸들러 추가
-    useEffect(() => {
-        let touchStartX = 0;
-        let touchStartY = 0;
-        const SWIPE_THRESHOLD = 50;
 
-        const handleTouchStart = (e) => {
-            touchStartX = e.changedTouches[0].screenX;
-            touchStartY = e.changedTouches[0].screenY;
-        };
-
-        const handleTouchEnd = (e) => {
-            const touchEndX = e.changedTouches[0].screenX;
-            const touchEndY = e.changedTouches[0].screenY;
-            
-            // 화면 가장자리에서 시작된 스와이프는 브라우저 뒤로가기/앞으로가기 제스처일 수 있으므로 무시
-            if (touchStartX < 20 || touchStartX > window.innerWidth - 20) {
-                return;
-            }
-
-            const deltaX = touchEndX - touchStartX;
-            const deltaY = touchEndY - touchStartY;
-
-            // X축 이동이 Y축 이동보다 크고, 임계값 이상인 경우 스와이프로 인식
-            if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > SWIPE_THRESHOLD) {
-                const currentIndex = NAV_ITEMS.findIndex(item => resolveActive(item));
-                if (currentIndex === -1) return; // 활성 탭을 찾을 수 없는 경우 무시
-
-                if (deltaX > 0) {
-                    // 오른쪽으로 스와이프: 이전 탭으로 이동
-                    if (currentIndex > 0) {
-                        navigate(NAV_ITEMS[currentIndex - 1].path);
-                    }
-                } else {
-                    // 왼쪽으로 스와이프: 다음 탭으로 이동
-                    if (currentIndex < NAV_ITEMS.length - 1) {
-                        navigate(NAV_ITEMS[currentIndex + 1].path);
-                    }
-                }
-            }
-        };
-
-        document.addEventListener('touchstart', handleTouchStart);
-        document.addEventListener('touchend', handleTouchEnd);
-
-        return () => {
-            document.removeEventListener('touchstart', handleTouchStart);
-            document.removeEventListener('touchend', handleTouchEnd);
-        };
-    }, [location.pathname, navigate]);
 
     // 로그인 화면에서는 하단 네비를 숨긴다
     if (location.pathname === '/login') {

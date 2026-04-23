@@ -71,6 +71,17 @@ const pageVariants = {
 
 // 페이지 전환 애니메이션용 Wrapper 컴포넌트
 function PageWrapper({ children, direction }) {
+  const location = useLocation();
+
+  useEffect(() => {
+    // 게시글 목록(/board)으로 돌아갈 때 스크롤 위치가 저장되어 있다면 상단 이동 생략 (PostListPage 자체 복원)
+    if (location.pathname === '/board' && sessionStorage.getItem('board_scroll')) {
+      return;
+    }
+    // 그 외 모든 페이지(혹은 일반적인 게시판 진입 시) 최상단으로 스크롤 초기화
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
+
   return (
     <motion.div
       custom={direction}
