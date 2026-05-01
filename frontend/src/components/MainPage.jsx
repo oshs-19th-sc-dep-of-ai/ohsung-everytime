@@ -4,6 +4,7 @@ import axios from 'axios';
 import { API_BASE_URL } from '../config';
 import { messaging } from '../firebase';
 import { getToken } from 'firebase/messaging';
+import { useOfflineData } from '../hooks/useOfflineData';
 import './MainPage.css';
 
 export function MainPage() {
@@ -129,42 +130,39 @@ export function MainPage() {
         setIsInstallable(false);
     };
 
-    // API 연동: 인기 게시글 3개 추출
-    useEffect(() => {
-        const fetchTopPosts = async () => {
-            try {
-                // 프론트 단에서 정렬하기 위해 게시글을 충분히 가져옵니다.
-                const response = await axios.get(`${API_BASE_URL}/posts`, {
-                    params: { page: 1, limit: 50 },
-                    withCredentials: true
-                });
+    // API 연동: 인기 게시글 3개 추출 (useOfflineData 훅 사용)
+    const fetchTopPosts = async () => {
+        const response = await axios.get(`${API_BASE_URL}/posts`, {
+            params: { page: 1, limit: 50 },
+            withCredentials: true
+        });
 
-                if (response.data && response.data.data && response.data.data.posts) {
-                    const fetchedPosts = response.data.data.posts.map(post => ({
-                        id: post.post_id,
-                        title: post.title,
-                        // 백엔드에 아직 likes 필드가 없다면 0으로 처리
-                        likes: post.likes_count || 0,
-                        commentCount: post.comment_count || 0,
-                    }));
+        if (response.data && response.data.data && response.data.data.posts) {
+            const fetchedPosts = response.data.data.posts.map(post => ({
+                id: post.post_id,
+                title: post.title,
+                likes: post.likes_count || 0,
+                commentCount: post.comment_count || 0,
+            }));
 
-                    // 좋아요 순 정렬 (좋아요가 같으면 댓글 수 기준)
-                    const sorted = fetchedPosts.sort((a, b) => {
-                        if (b.likes === a.likes) {
-                            return b.commentCount - a.commentCount;
-                        }
-                        return b.likes - a.likes;
-                    }).slice(0, 3);
-
-                    setTop3Posts(sorted);
+            // 좋아요 순 정렬 (좋아요가 같으면 댓글 수 기준)
+            return fetchedPosts.sort((a, b) => {
+                if (b.likes === a.likes) {
+                    return b.commentCount - a.commentCount;
                 }
-            } catch (error) {
-                console.error('인기글을 불러오는 중 오류 발생:', error);
-            }
-        };
+                return b.likes - a.likes;
+            }).slice(0, 3);
+        }
+        return [];
+    };
 
-        fetchTopPosts();
-    }, []);
+    const { data: cachedTop3Posts, isStale } = useOfflineData('main-top3', fetchTopPosts, { store: 'posts' });
+
+    useEffect(() => {
+        if (cachedTop3Posts) {
+            setTop3Posts(Array.isArray(cachedTop3Posts) ? cachedTop3Posts : []);
+        }
+    }, [cachedTop3Posts]);
 
     // ==========================================
     // [Navigation Functions]
@@ -235,7 +233,10 @@ export function MainPage() {
                     <div className="divider"></div>
 
                     <div className="popular-preview-area">
-                        <p className="area-label">🔥 인기글</p>
+                        <div className="area-label-wrapper" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <p className="area-label">🔥 인기글</p>
+                            {isStale && <span className="stale-badge" style={{ fontSize: '10px', color: '#666', background: '#eee', padding: '2px 6px', borderRadius: '4px' }}>오프라인</span>}
+                        </div>
 
                         <div className="preview-list">
                             {top3Posts.length > 0 ? (

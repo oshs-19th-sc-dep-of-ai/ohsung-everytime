@@ -4,18 +4,25 @@ import axios from "axios";
 import "./login.css";
 import { API_BASE_URL } from "../config";
 import { useToast } from "../contexts/ToastContext.jsx";
+import { useNetwork } from '../contexts/NetworkContext.jsx';
 
 export function Login() {
     const navigate = useNavigate();
     const [form, setForm] = useState({ student_id: "", password: "" });
     const [loading, setLoading] = useState(false);
     const { showToast } = useToast();
+    const { isOnline } = useNetwork();
 
     const handleChange = (e) => {
         setForm({ ...form, [e.target.name]: e.target.value });
     };
 
     const handleLogin = async () => {
+        if (!isOnline) {
+            showToast("오프라인 상태에서는 로그인할 수 없습니다. 연결을 확인해주세요.");
+            return;
+        }
+
         if (!form.student_id || !form.password) {
             showToast("아이디와 비밀번호를 입력하세요.");
             return;

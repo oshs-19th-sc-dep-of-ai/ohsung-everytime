@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import axios from "axios";
 import { API_BASE_URL } from "./config";
 import { messaging, onMessage } from "./firebase";
+import { offlineQueue } from "./utils/offlineQueue.js";
 import { MainPage } from "./components/MainPage";
 import { Header } from "./components/Header.jsx";
 import { PostListPage } from "./components/PostListPage.jsx";
@@ -183,6 +184,8 @@ function AnimatedRoutes() {
   );
 }
 
+import { OfflineBanner } from "./components/OfflineBanner.jsx";
+
 function App() {
   const { showToastWithLink } = useToast();
 
@@ -207,7 +210,6 @@ function App() {
     }
   }, []);
 
-  // 포그라운드 푸시 알림 수신 처리 — 인앱 토스트로 표시
   useEffect(() => {
     if (!messaging) return; // FCM 미지원 브라우저에서는 건너뜀
     const unsubscribe = onMessage(messaging, (payload) => {
@@ -220,9 +222,23 @@ function App() {
     return () => unsubscribe();
   }, []);
 
+  // 오프라인 큐 동기화 리스너 추가
+  useEffect(() => {
+    const handleSync = async () => {
+      const synced = await offlineQueue.syncAll();
+      if (synced) {
+        showToastWithLink("오프라인 상태에서 작성한 작업이 동기화되었습니다.", "", null);
+      }
+    };
+
+    window.addEventListener('sync-offline-queue', handleSync);
+    return () => window.removeEventListener('sync-offline-queue', handleSync);
+  }, []);
+
   return (
     <>
       <BrowserRouter>
+        <OfflineBanner />
         <Header />
         <div style={{ overflowX: 'hidden', width: '100%', minHeight: '100vh', paddingBottom: '90px' }}>
           <AnimatedRoutes />

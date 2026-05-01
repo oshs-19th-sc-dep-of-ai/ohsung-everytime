@@ -452,6 +452,8 @@ function ChangePasswordTab() {
   );
 }
 
+import { useNetwork } from '../contexts/NetworkContext.jsx';
+
 // 메인 AdminPage (설정 페이지)
 const ADMIN_TABS = [
   { id: "history", label: "📋 수정 이력" },
@@ -461,6 +463,8 @@ const ADMIN_TABS = [
 export default function AdminPage() {
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [activeAdminTab, setActiveAdminTab] = useState("history");
+  
+  const { isOnline } = useNetwork();
 
   const status = localStorage.getItem("status");
   const userName = localStorage.getItem("student_name") || "사용자";
@@ -477,8 +481,15 @@ export default function AdminPage() {
         <span className="admin-header__user">🛡 {userName}</span>
       </header>
 
+      {/* 오프라인 경고 */}
+      {!isOnline && (
+        <div style={{ margin: '16px', padding: '12px', background: '#ffebee', color: '#c62828', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', textAlign: 'center' }}>
+          ⚠️ 오프라인 상태에서는 설정 및 관리자 기능을 사용할 수 없습니다.
+        </div>
+      )}
+
       {/* 본문 */}
-      <main className="admin-body">
+      <main className="admin-body" style={{ opacity: isOnline ? 1 : 0.5, pointerEvents: isOnline ? 'auto' : 'none' }}>
         {!showAdminPanel ? (
           <>
             <ChangePasswordTab />

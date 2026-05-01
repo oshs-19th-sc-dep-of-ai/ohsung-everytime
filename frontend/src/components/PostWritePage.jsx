@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE_URL } from "../config";
 import { useToast } from "../contexts/ToastContext.jsx";
+import { useNetwork } from '../contexts/NetworkContext.jsx';
+import { offlineQueue } from '../utils/offlineQueue.js';
 import './PostWritePage.css';
 
 export const PostWritePage = () => {
@@ -10,6 +12,7 @@ export const PostWritePage = () => {
     const [content, setContent] = useState('');
     const [isAnonymous, setIsAnonymous] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const { isOnline } = useNetwork();
 
     useEffect(() => {
         window.scrollTo(0, 0);
@@ -33,6 +36,21 @@ export const PostWritePage = () => {
         }
         if (title.length > 255) {
             showToast("제목은 255자 이내여야 합니다.");
+            return;
+        }
+
+        if (!isOnline) {
+            await offlineQueue.enqueue({
+                url: `${API_BASE_URL}/posts`,
+                method: 'POST',
+                body: {
+                    title: title,
+                    content: content,
+                    is_anonymous: isAnonymous
+                }
+            });
+            showToast('오프라인 상태입니다. 큐에 저장되어 온라인 복귀 시 자동 게시됩니다.');
+            navigate('/board', { replace: true });
             return;
         }
 

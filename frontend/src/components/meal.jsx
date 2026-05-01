@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import "./meal.css";
 import { API_BASE_URL } from "../config.js";
+import { useOfflineData } from '../hooks/useOfflineData';
 
 //유틸 함수
 const formatDate = (date) => {
@@ -121,52 +122,34 @@ function MealCard({ title, icon, data, loading, error }) {
 //MealPage 메인 컴포넌트
 export default function MealPage() {
   const [date, setDate] = useState(new Date());
-  const [lunch, setLunch] = useState(null);
-  const [dinner, setDinner] = useState(null);
-  const [lunchLoading, setLunchLoading] = useState(false);
-  const [dinnerLoading, setDinnerLoading] = useState(false);
-  const [lunchError, setLunchError] = useState(false);
-  const [dinnerError, setDinnerError] = useState(false);
 
-  //날짜 변경 시 API 호출
-  useEffect(() => {
-    if (checkIsWeekend(date)) return;
+  const dateStr = formatDate(date);
+  const isWeekend = checkIsWeekend(date);
+  const isToday = checkIsToday(date);
 
-    const dateStr = formatDate(date);
+  const fetchLunch = async () => {
+    const res = await fetch(`${API_BASE_URL}/meal_lunch?date=${dateStr}`);
+    if (!res.ok) throw new Error();
+    return res.json();
+  };
 
-    const fetchLunch = async () => {
-      setLunchLoading(true);
-      setLunchError(false);
-      setLunch(null);
-      try {
-        const res = await fetch(`${API_BASE_URL}/meal_lunch?date=${dateStr}`);
-        if (!res.ok) throw new Error();
-        setLunch(await res.json());
-      } catch {
-        setLunchError(true);
-      } finally {
-        setLunchLoading(false);
-      }
-    };
+  const fetchDinner = async () => {
+    const res = await fetch(`${API_BASE_URL}/meal_dinner?date=${dateStr}`);
+    if (!res.ok) throw new Error();
+    return res.json();
+  };
 
-    const fetchDinner = async () => {
-      setDinnerLoading(true);
-      setDinnerError(false);
-      setDinner(null);
-      try {
-        const res = await fetch(`${API_BASE_URL}/meal_dinner?date=${dateStr}`);
-        if (!res.ok) throw new Error();
-        setDinner(await res.json());
-      } catch {
-        setDinnerError(true);
-      } finally {
-        setDinnerLoading(false);
-      }
-    };
+  const { data: lunch, isStale: lunchStale, loading: lunchLoading, error: lunchError } = useOfflineData(
+    isWeekend ? null : `lunch_${dateStr}`,
+    fetchLunch,
+    { store: 'meals' }
+  );
 
-    fetchLunch();
-    fetchDinner();
-  }, [date]);
+  const { data: dinner, isStale: dinnerStale, loading: dinnerLoading, error: dinnerError } = useOfflineData(
+    isWeekend ? null : `dinner_${dateStr}`,
+    fetchDinner,
+    { store: 'meals' }
+  );
 
   const changeDate = (days) => {
     setDate((prev) => {
@@ -175,9 +158,6 @@ export default function MealPage() {
       return next;
     });
   };
-
-  const isWeekend = checkIsWeekend(date);
-  const isToday = checkIsToday(date);
 
   return (
     <div className="meal-page">
@@ -219,7 +199,7 @@ export default function MealPage() {
           <div className="meal-cards">
             <MealCard
               key={`lunch-${formatDate(date)}`}
-              title="점심"
+              title={lunchStale ? "점심 (오프라인)" : "점심"}
               icon="🥗"
               data={lunch}
               loading={lunchLoading}
@@ -227,7 +207,7 @@ export default function MealPage() {
             />
             <MealCard
               key={`dinner-${formatDate(date)}`}
-              title="석식"
+              title={dinnerStale ? "석식 (오프라인)" : "석식"}
               icon="🍚"
               data={dinner}
               loading={dinnerLoading}

@@ -3,6 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE_URL } from "../config";
 import { useToast } from '../contexts/ToastContext.jsx';
+import { useNetwork } from '../contexts/NetworkContext.jsx';
+import { offlineQueue } from '../utils/offlineQueue.js';
+import { useOfflineData } from '../hooks/useOfflineData.js';
 import './PostDetailPage.css';
 
 const POPULAR_COMMENT_THRESHOLD = 5;
@@ -55,62 +58,66 @@ export function PostDetailPage() {
     const [sortType, setSortType] = useState('latest');
     const [sortOrder, setSortOrder] = useState('desc');
 
-    // 토스트 알림 상태 (전역)
     const { showToast } = useToast();
+    const { isOnline } = useNetwork();
 
     // 로그인 정보를 기반으로 관리자 여부 확인
     const isAdmin = localStorage.getItem("status") === "admin";
 
+    const fetchPostDetails = async () => {
+        const [postRes, commentsRes] = await Promise.all([
+            axios.get(`${API_BASE_URL}/posts/${postId}`, { withCredentials: true }),
+            axios.get(`${API_BASE_URL}/posts/${postId}/comments`, { withCredentials: true })
+        ]);
+        
+        let pData = null;
+        let cData = [];
+        
+        if (postRes.data && postRes.data.data) {
+            const p = postRes.data.data;
+            pData = {
+                id: p.post_id,
+                title: p.title,
+                content: p.content || "",
+                author: p.author_name,
+                createdAt: p.created_at,
+                likes: p.likes_count || 0,
+                is_liked: p.is_liked || false,
+                is_anonymous: p.is_anonymous,
+            };
+        }
+        
+        if (commentsRes.data && commentsRes.data.data) {
+            cData = commentsRes.data.data;
+        }
+        
+        return { post: pData, comments: cData };
+    };
 
-    const fetchPostAndComments = useCallback(async (abortSignal, showLoading = true) => {
-        try {
-            if (showLoading) setIsLoading(true);
+    const { data: cachedDetails, isStale, loading: isCachedLoading, error: cachedError, refetch } = useOfflineData(`post_${postId}`, fetchPostDetails, { store: 'postDetails' });
 
-            // 1. 게시글 상세 조회 API 호출
-            const postRes = await axios.get(`${API_BASE_URL}/posts/${postId}`, {
-                withCredentials: true,
-                signal: abortSignal
-            });
+    useEffect(() => {
+        if (cachedDetails) {
+            setPost(cachedDetails.post);
+            setComments(cachedDetails.comments);
+        }
+    }, [cachedDetails]);
 
-            if (postRes.data && postRes.data.data) {
-                const p = postRes.data.data;
-                setPost({
-                    id: p.post_id,
-                    title: p.title,
-                    content: p.content || "",
-                    author: p.author_name,
-                    createdAt: p.created_at,
-                    likes: p.likes_count || 0,
-                    is_liked: p.is_liked || false,
-                    is_anonymous: p.is_anonymous,
-                });
-            }
-
-            // 2. 댓글 목록 조회 API 호출
-            const commentsRes = await axios.get(`${API_BASE_URL}/posts/${postId}/comments`, {
-                withCredentials: true,
-                signal: abortSignal
-            });
-
-            if (commentsRes.data && commentsRes.data.data) {
-                setComments(commentsRes.data.data);
-            }
-
-            setError(null);
-        } catch (err) {
-            if (axios.isCancel(err)) return;
-            console.error("데이터 로딩 오류:", err);
-            if (err.response?.status === 401) {
+    useEffect(() => {
+        if (cachedError) {
+            if (cachedError.response?.status === 401) {
                 setError("로그인이 필요한 페이지입니다.");
             } else {
-                setError("게시글 데이터를 불러오는 데 실패했습니다.");
+                setError("게시글 데이터를 불러오는 데 실패했습니다. 오프라인 상태일 수 있습니다.");
             }
-        } finally {
-            if (showLoading && (!abortSignal || !abortSignal.aborted)) {
-                setIsLoading(false);
-            }
+        } else {
+            setError(null);
         }
-    }, [postId]);
+    }, [cachedError]);
+
+    useEffect(() => {
+        setIsLoading(isCachedLoading && !cachedDetails);
+    }, [isCachedLoading, cachedDetails]);
 
     useEffect(() => {
         // 즉시 맨 위로 스크롤
@@ -121,13 +128,10 @@ export function PostDetailPage() {
             window.scrollTo(0, 0);
         }, 350);
 
-        const controller = new AbortController();
-        fetchPostAndComments(controller.signal, true);
         return () => {
             clearTimeout(timer);
-            controller.abort();
         };
-    }, [fetchPostAndComments]);
+    }, []);
 
     const topPopularComments = useMemo(() => {
         const allCommentsFlattened = [];
@@ -168,6 +172,22 @@ export function PostDetailPage() {
 
     const handlePostLike = async () => {
         if (!post) return;
+
+        if (!isOnline) {
+            await offlineQueue.enqueue({
+                url: `${API_BASE_URL}/posts/${postId}/like`,
+                method: 'POST'
+            });
+            showToast("오프라인 상태입니다. 온라인 복귀 시 좋아요가 반영됩니다.");
+            // 낙관적 UI 업데이트
+            setPost(prev => ({
+                ...prev,
+                likes: prev.is_liked ? prev.likes - 1 : prev.likes + 1,
+                is_liked: !prev.is_liked
+            }));
+            return;
+        }
+
         try {
             const res = await axios.post(`${API_BASE_URL}/posts/${postId}/like`, {}, {
                 withCredentials: true
@@ -214,6 +234,22 @@ export function PostDetailPage() {
         e.preventDefault();
         if (!newComment.trim() || isSubmitting) return;
 
+        if (!isOnline) {
+            await offlineQueue.enqueue({
+                url: `${API_BASE_URL}/posts/${postId}/comments`,
+                method: 'POST',
+                body: {
+                    content: newComment,
+                    is_anonymous: isAnonymous,
+                    parent_id: replyingTo
+                }
+            });
+            setNewComment("");
+            setReplyingTo(null);
+            showToast("오프라인 상태입니다. 큐에 저장되어 온라인 복귀 시 댓글이 등록됩니다.");
+            return;
+        }
+
         try {
             setIsSubmitting(true);
             await axios.post(`${API_BASE_URL}/posts/${postId}/comments`, {
@@ -226,7 +262,7 @@ export function PostDetailPage() {
             setReplyingTo(null); // 전송 후 상태 초기화
             showToast("댓글이 작성되었습니다.");
 
-            fetchPostAndComments(null, false);
+            refetch();
         } catch (err) {
             if (err.response?.status === 401) showToast("로그인이 필요합니다.");
             else showToast(err.response?.data?.message || "댓글 작성에 실패했습니다.");
@@ -236,11 +272,34 @@ export function PostDetailPage() {
     };
 
     const handleCommentLike = async (commentId) => {
+        if (!isOnline) {
+            await offlineQueue.enqueue({
+                url: `${API_BASE_URL}/comments/${commentId}/like`,
+                method: 'POST'
+            });
+            showToast("오프라인 상태입니다. 온라인 복귀 시 좋아요가 반영됩니다.");
+            // 낙관적 UI 업데이트 (간단히 처리)
+            setComments(prev => {
+                const updateLike = (list) => {
+                    return list.map(c => {
+                        if (c.comment_id === commentId) {
+                            return { ...c, likes_count: (c.likes_count || 0) + (c.is_liked ? -1 : 1), is_liked: !c.is_liked };
+                        }
+                        if (c.replies) {
+                            return { ...c, replies: updateLike(c.replies) };
+                        }
+                        return c;
+                    });
+                };
+                return updateLike(prev);
+            });
+            return;
+        }
+
         try {
             const res = await axios.post(`${API_BASE_URL}/comments/${commentId}/like`, {}, { withCredentials: true });
             if (res.data.status === 'success') {
-
-                fetchPostAndComments(null, false);
+                refetch();
             }
         } catch (err) {
             if (err.response?.status === 401) showToast("로그인이 필요합니다.");
@@ -255,7 +314,7 @@ export function PostDetailPage() {
         try {
             await axios.delete(`${API_BASE_URL}/admin/comments/${commentId}`, { withCredentials: true });
             showToast("댓글이 강제 삭제되었습니다.");
-            fetchPostAndComments(null, false);
+            refetch();
         } catch (err) {
             showToast(err.response?.data?.message || "댓글 삭제에 실패했습니다.");
         }
@@ -402,7 +461,10 @@ export function PostDetailPage() {
                 <>
                     {/* 게시글 영역 */}
                     <div className="post-card">
-                        <h2 className="post-title">{post.title}</h2>
+                        <h2 className="post-title">
+                            {post.title}
+                            {isStale && <span className="stale-badge" style={{ fontSize: '11px', color: '#666', background: '#eee', padding: '2px 6px', borderRadius: '4px', verticalAlign: 'middle', marginLeft: '8px' }}>오프라인 데이터</span>}
+                        </h2>
                         <div className="post-meta">
                             <span className="author">
                                 {post.author}

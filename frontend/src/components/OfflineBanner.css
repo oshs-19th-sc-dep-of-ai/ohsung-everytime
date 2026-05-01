@@ -1,0 +1,22 @@
+.offline-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: 8px 12px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  z-index: 9999;
+  color: #fff;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.offline-banner.offline {
+  background-color: #f44336; /* Red for offline */
+}
+
+.offline-banner.restored {
+  background-color: #4CAF50; /* Green for online */
+}

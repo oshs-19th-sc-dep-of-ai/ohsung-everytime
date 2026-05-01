@@ -1,9 +1,44 @@
 import { precacheAndRoute } from 'workbox-precaching';
+import { registerRoute } from 'workbox-routing';
+import { StaleWhileRevalidate, CacheFirst, NetworkFirst } from 'workbox-strategies';
+import { ExpirationPlugin } from 'workbox-expiration';
+import { CacheableResponsePlugin } from 'workbox-cacheable-response';
 
-// FCM 백그라운드 메시지 처리용 Service Worker
+// FCM 백그라운드 메시지 처리용 Service Worker 및 오프라인 캐싱
 // 이 파일은 Vite PWA의 injectManifest에 의해 번들링되어 최종적으로 dist/ 에 배치됩니다.
 
 precacheAndRoute(self.__WB_MANIFEST);
+
+// ── 1) API 응답 런타임 캐싱 (GET 요청만) ──
+// 게시글 목록, 상세, 댓글, 급식 → NetworkFirst (온라인이면 새 데이터, 오프라인이면 캐시)
+registerRoute(
+  ({ url }) => url.pathname.startsWith('/posts') || url.pathname.startsWith('/meal'),
+  new NetworkFirst({
+    cacheName: 'api-cache',
+    plugins: [
+      new CacheableResponsePlugin({ statuses: [0, 200] }),
+      new ExpirationPlugin({ maxEntries: 100, maxAgeSeconds: 24 * 60 * 60 }), // 24h
+    ],
+  }),
+  'GET'
+);
+
+// ── 2) 정적 에셋(이미지, 폰트) → CacheFirst ──
+registerRoute(
+  ({ request }) => request.destination === 'image' || request.destination === 'font',
+  new CacheFirst({
+    cacheName: 'static-assets',
+    plugins: [
+      new ExpirationPlugin({ maxEntries: 60, maxAgeSeconds: 30 * 24 * 60 * 60 }), // 30일
+    ],
+  })
+);
+
+// ── 3) CDN (Firebase SDK 등) → StaleWhileRevalidate ──
+registerRoute(
+  ({ url }) => url.origin === 'https://www.gstatic.com',
+  new StaleWhileRevalidate({ cacheName: 'cdn-cache' })
+);
 
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js');

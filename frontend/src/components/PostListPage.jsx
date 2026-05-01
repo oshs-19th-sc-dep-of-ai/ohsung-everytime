@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE_URL } from "../config";
+import { useOfflineData } from '../hooks/useOfflineData';
 import './PostListPage.css';
 
 // =========================================
@@ -36,14 +37,7 @@ const POSTS_PER_PAGE = 10;
 
 export function PostListPage() {
     const navigate = useNavigate(); // 라우팅을 위한 useNavigate 훅
-    const [posts, setPosts] = useState(() => {
-        const savedPosts = sessionStorage.getItem('board_posts');
-        try {
-            return savedPosts ? JSON.parse(savedPosts) : [];
-        } catch (e) {
-            return [];
-        }
-    });
+    const [posts, setPosts] = useState([]);
     const [currentPage, setCurrentPage] = useState(() => Number(sessionStorage.getItem('board_page')) || 1);
     const [searchTerm, setSearchTerm] = useState(() => sessionStorage.getItem('board_search') || "");
     const [sortOrder, setSortOrder] = useState(() => sessionStorage.getItem('board_sort') || 'latest');
@@ -55,38 +49,34 @@ export function PostListPage() {
         sessionStorage.setItem('board_sort', sortOrder);
     }, [currentPage, searchTerm, sortOrder]);
 
-    // 🌟 API 연동
+    // 🌟 API 연동 및 오프라인 캐시
+    const fetchPosts = async () => {
+        const response = await axios.get(`${API_BASE_URL}/posts`, {
+            params: { page: 1, limit: 100 },
+            withCredentials: true
+        });
+
+        if (response.data && response.data.data && response.data.data.posts) {
+            return response.data.data.posts.map(post => ({
+                id: post.post_id,
+                title: post.title,
+                content: post.content_preview || "내용이 없습니다.",
+                likes: post.likes_count || 0,
+                commentCount: post.comment_count || 0,
+                author: post.is_anonymous ? '익명' : (post.author_name || '알 수 없음'),
+                createdAt: post.created_at
+            }));
+        }
+        return [];
+    };
+
+    const { data: cachedPosts, isStale } = useOfflineData('board_posts', fetchPosts, { store: 'posts' });
+
     useEffect(() => {
-        const fetchPosts = async () => {
-            try {
-                const response = await axios.get(`${API_BASE_URL}/posts`, {
-                    params: { page: 1, limit: 100 },
-                    withCredentials: true
-                });
-
-                if (response.data && response.data.data && response.data.data.posts) {
-                    const fetchedPosts = response.data.data.posts.map(post => ({
-                        id: post.post_id,
-                        title: post.title,
-                        content: post.content_preview || "내용이 없습니다.",
-                        likes: post.likes_count || 0,
-                        commentCount: post.comment_count || 0,
-                        author: post.is_anonymous ? '익명' : (post.author_name || '알 수 없음'),
-                        createdAt: post.created_at
-                    }));
-
-                    setPosts(fetchedPosts);
-                    sessionStorage.setItem('board_posts', JSON.stringify(fetchedPosts));
-                } else {
-                    console.error("API 응답에서 게시글 데이터를 찾을 수 없습니다.", response.data);
-                }
-            } catch (error) {
-                console.error('게시글 목록을 불러오는 중 오류 발생:', error);
-            }
-        };
-
-        fetchPosts();
-    }, []);
+        if (cachedPosts) {
+            setPosts(Array.isArray(cachedPosts) ? cachedPosts : []);
+        }
+    }, [cachedPosts]);
 
     const topHotPosts = useMemo(() => {
         return [...posts]
@@ -219,7 +209,7 @@ export function PostListPage() {
 
             <section className="general-section">
                 <div className="list-header">
-                    <h3 className="section-title">전체 게시글</h3>
+                    <h3 className="section-title">전체 게시글 {isStale && <span className="stale-badge" style={{ fontSize: '10px', color: '#666', background: '#eee', padding: '2px 6px', borderRadius: '4px', verticalAlign: 'middle', marginLeft: '6px' }}>오프라인</span>}</h3>
                     <div className="sort-wrapper">
                         <select
                             value={sortOrder}

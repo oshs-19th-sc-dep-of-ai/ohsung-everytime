@@ -102,6 +102,40 @@
     text-overflow: ellipsis;
 }
 
+.toast-body.expanded {
+    display: block;
+    -webkit-line-clamp: unset;
+    line-clamp: unset;
+    overflow-y: auto;
+    max-height: 250px;
+    white-space: pre-wrap; /* 줄바꿈 보존 */
+    padding-right: 4px;
+}
+
+/* 스크롤바 디자인 (확장 시 필요할 수 있음) */
+.toast-body.expanded::-webkit-scrollbar {
+    width: 4px;
+}
+.toast-body.expanded::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+}
+
+.toast-more-hint {
+    margin-top: 6px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: 500;
+}
+
+.toast-expanded {
+    align-items: flex-start;
+}
+
+.toast-expanded .toast-icon {
+    margin-top: 2px;
+}
+
 /* 닫기 버튼 */
 .toast-close {
     flex-shrink: 0;
