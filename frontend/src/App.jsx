@@ -202,6 +202,15 @@ function App() {
             // 서버 세션과 로컬 스토리지 상태 불일치 (세션 만료)
             localStorage.clear();
             window.location.href = "/login";
+          } else {
+            // 세션 정보 동기화
+            localStorage.setItem("is_mod", res.data.is_mod ? "true" : "false");
+            // status 값도 동기화 (기존 코드에서 status를 "admin"으로 기대하는 부분이 있을 수 있으므로 백엔드 응답을 따름)
+            if (res.data.is_mod) {
+              localStorage.setItem("status", "admin");
+            } else {
+              localStorage.setItem("status", "success");
+            }
           }
         })
         .catch((err) => {

@@ -61,8 +61,8 @@ export function PostDetailPage() {
     const { showToast } = useToast();
     const { isOnline } = useNetwork();
 
-    // 로그인 정보를 기반으로 관리자 여부 확인
-    const isAdmin = localStorage.getItem("status") === "admin";
+    // 관리자(모더레이터) 여부 확인 (이제 is_mod가 true인 경우만 관리자 기능을 사용할 수 있음)
+    const isAdmin = localStorage.getItem("is_mod") === "true";
 
     const fetchPostDetails = async () => {
         const [postRes, commentsRes] = await Promise.all([

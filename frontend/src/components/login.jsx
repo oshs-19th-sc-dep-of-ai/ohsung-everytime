@@ -46,6 +46,7 @@ export function Login() {
             localStorage.setItem("student_name", data.student_name);
             localStorage.setItem("status", data.status);
             localStorage.setItem("student_id", data.student_id);
+            localStorage.setItem("is_mod", data.is_mod ? "true" : "false");
 
             showToast("로그인 성공! 메인 화면으로 이동합니다.");
             navigate("/", { replace: true });

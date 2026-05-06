@@ -15,12 +15,13 @@ const apiFetch = async (url, options = {}) => {
 };
 
 // ───── 로딩 버튼 ─────
-function LoadingBtn({ loading, onClick, className, children }) {
+function LoadingBtn({ loading, onClick, className, children, style }) {
   return (
     <button
       className={`admin-btn ${className}`}
       onClick={onClick}
       disabled={loading}
+      style={style}
     >
       {loading ? <span className="admin-btn__spinner" /> : null}
       {children}
@@ -458,6 +459,7 @@ import { useNetwork } from '../contexts/NetworkContext.jsx';
 const ADMIN_TABS = [
   { id: "history", label: "📋 수정 이력" },
   { id: "push", label: "📣 푸시 알림" },
+  { id: "trace", label: "🔍 작성자 추적" }
 ];
 
 export default function AdminPage() {
@@ -466,16 +468,15 @@ export default function AdminPage() {
   
   const { isOnline } = useNetwork();
 
-  const status = localStorage.getItem("status");
+  const isMod = localStorage.getItem("is_mod") === "true";
   const userName = localStorage.getItem("student_name") || "사용자";
-  const isAdmin = status === "admin";
 
   return (
     <div className="admin-page">
       {/* 헤더 */}
       <header className="admin-header" style={{ justifyContent: 'space-between' }}>
         <div className="admin-header__left">
-          <span className="admin-header__badge">{isAdmin ? "ADMIN" : "USER"}</span>
+          <span className="admin-header__badge">{isMod ? "MODERATOR" : "USER"}</span>
           <span className="admin-header__title">{showAdminPanel ? "어드민 패널" : "설정"}</span>
         </div>
         <span className="admin-header__user">🛡 {userName}</span>
@@ -494,7 +495,7 @@ export default function AdminPage() {
           <>
             <ChangePasswordTab />
             
-            {isAdmin && (
+            {isMod && (
               <div style={{ marginTop: '24px', textAlign: 'center' }}>
                 <button 
                   className="admin-btn admin-btn--primary" 
@@ -531,6 +532,7 @@ export default function AdminPage() {
 
             {activeAdminTab === "history" && <CommentHistoryTab />}
             {activeAdminTab === "push" && <PushNotificationTab />}
+            {activeAdminTab === "trace" && <TraceAuthorTab />}
           </>
         )}
       </main>
