@@ -14,7 +14,7 @@ def get_timetable():
     # 시간표 데이터 조회
     timetable_data = db.fetch_all(
         """
-        SELECT timetable_id, day_of_week, period, subject_name, location, memo 
+        SELECT timetable_id, day_of_week, period, subject_name, location, memo, color 
         FROM Timetable 
         WHERE student_id = %(student_id)s
         ORDER BY day_of_week, period
@@ -68,8 +68,8 @@ def update_timetable():
         # 시간표 삽입
         if new_timetable:
             insert_sql = """
-                INSERT INTO Timetable (student_id, day_of_week, period, subject_name, location, memo) 
-                VALUES (%(student_id)s, %(day_of_week)s, %(period)s, %(subject_name)s, %(location)s, %(memo)s)
+                INSERT INTO Timetable (student_id, day_of_week, period, subject_name, location, memo, color) 
+                VALUES (%(student_id)s, %(day_of_week)s, %(period)s, %(subject_name)s, %(location)s, %(memo)s, %(color)s)
             """
             for item in new_timetable:
                 db.query(insert_sql, 
@@ -78,7 +78,8 @@ def update_timetable():
                     period=int(item.get('period')),
                     subject_name=str(item.get('subject_name')).strip(),
                     location=str(item.get('location')).strip() if item.get('location') else None,
-                    memo=str(item.get('memo')).strip() if item.get('memo') else None
+                    memo=str(item.get('memo')).strip() if item.get('memo') else None,
+                    color=str(item.get('color')).strip() if item.get('color') else '#FFFFFF'
                 )
 
         db.commit()

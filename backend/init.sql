@@ -88,6 +88,7 @@ CREATE TABLE IF NOT EXISTS Timetable (
     subject_name VARCHAR(100) NOT NULL, -- 과목명
     location VARCHAR(20) DEFAULT NULL, -- 교실 (101~313)
     memo TEXT DEFAULT NULL, -- 메모
+    color VARCHAR(7) NOT NULL DEFAULT '#FFFFFF',
     UNIQUE KEY uq_student_schedule (student_id, day_of_week, period),
     FOREIGN KEY (student_id) REFERENCES Students (student_id) ON DELETE CASCADE
 );
