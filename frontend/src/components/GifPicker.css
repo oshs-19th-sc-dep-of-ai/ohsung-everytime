@@ -1,0 +1,123 @@
+/* 반투명 오버레이 */
+.gif-picker-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end; /* 모바일을 위한 하단 정렬 기본값 */
+    backdrop-filter: blur(2px);
+    animation: fadeIn 0.2s ease-out;
+}
+
+/* 모달 바디 - 모바일 하단 시트 (Bottom Sheet) 최적화 */
+.gif-picker-modal {
+    background-color: #fff;
+    width: 100%;
+    max-width: 600px;
+    height: 85vh; /* 화면의 85% 차지 */
+    border-radius: 20px 20px 0 0; /* 위쪽만 둥글게 */
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    overflow: hidden;
+}
+
+.gif-picker-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.gif-picker-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+}
+
+.gif-picker-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: #888;
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.gif-picker-search-area {
+    padding: 12px 16px;
+    background-color: #f9f9f9;
+}
+
+/* Grid 스크롤 영역 */
+.gif-picker-grid-wrapper {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 16px;
+    /* iOS 부드러운 스크롤 */
+    -webkit-overflow-scrolling: touch; 
+}
+
+/* 스크롤바 숨기기 (선택사항) */
+.gif-picker-grid-wrapper::-webkit-scrollbar {
+    width: 6px;
+}
+.gif-picker-grid-wrapper::-webkit-scrollbar-thumb {
+    background-color: #ccc;
+    border-radius: 3px;
+}
+
+.gif-picker-footer {
+    padding: 10px 16px;
+    text-align: center;
+    background-color: #fff;
+    border-top: 1px solid #eee;
+}
+
+/* GIPHY 로고 작게 */
+.giphy-logo-small {
+    height: 18px; /* 크기 대폭 축소 */
+    object-fit: contain;
+    opacity: 0.8;
+}
+
+/* 데스크탑 환경일 때는 중앙 모달 형태로 변경 */
+@media (min-width: 600px) {
+    .gif-picker-overlay {
+        align-items: center; /* 중앙 정렬 */
+    }
+
+    .gif-picker-modal {
+        height: 80vh;
+        max-height: 600px;
+        border-radius: 12px; /* 전체 둥글게 */
+        animation: scaleUp 0.2s ease-out;
+    }
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+}
+
+@keyframes scaleUp {
+    from { transform: scale(0.95); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}

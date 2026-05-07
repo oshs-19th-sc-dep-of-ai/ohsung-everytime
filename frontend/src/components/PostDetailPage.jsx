@@ -6,6 +6,8 @@ import { useToast } from '../contexts/ToastContext.jsx';
 import { useNetwork } from '../contexts/NetworkContext.jsx';
 import { offlineQueue } from '../utils/offlineQueue.js';
 import { useOfflineData } from '../hooks/useOfflineData.js';
+import { GifPicker } from './GifPicker.jsx';
+import { renderContentWithGifs } from '../utils/renderContentWithGifs.jsx';
 import './PostDetailPage.css';
 
 const POPULAR_COMMENT_THRESHOLD = 5;
@@ -46,6 +48,8 @@ export function PostDetailPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState(null);
+    const [showCommentGifPicker, setShowCommentGifPicker] = useState(false);
+    const [selectedCommentGif, setSelectedCommentGif] = useState(null);
 
 
     const [replyingTo, setReplyingTo] = useState(null);
@@ -232,19 +236,22 @@ export function PostDetailPage() {
 
     const handleCommentSubmit = async (e) => {
         e.preventDefault();
-        if (!newComment.trim() || isSubmitting) return;
+        if ((!newComment.trim() && !selectedCommentGif) || isSubmitting) return;
+
+        const finalComment = newComment + (selectedCommentGif ? (newComment.trim() ? '\n' : '') + `[gif:${selectedCommentGif}]` : '');
 
         if (!isOnline) {
             await offlineQueue.enqueue({
                 url: `${API_BASE_URL}/posts/${postId}/comments`,
                 method: 'POST',
                 body: {
-                    content: newComment,
+                    content: finalComment,
                     is_anonymous: isAnonymous,
                     parent_id: replyingTo
                 }
             });
             setNewComment("");
+            setSelectedCommentGif(null);
             setReplyingTo(null);
             showToast("오프라인 상태입니다. 큐에 저장되어 온라인 복귀 시 댓글이 등록됩니다.");
             return;
@@ -253,12 +260,13 @@ export function PostDetailPage() {
         try {
             setIsSubmitting(true);
             await axios.post(`${API_BASE_URL}/posts/${postId}/comments`, {
-                content: newComment,
+                content: finalComment,
                 is_anonymous: isAnonymous,
                 parent_id: replyingTo
             }, { withCredentials: true });
 
             setNewComment("");
+            setSelectedCommentGif(null);
             setReplyingTo(null); // 전송 후 상태 초기화
             showToast("댓글이 작성되었습니다.");
 
@@ -374,7 +382,7 @@ export function PostDetailPage() {
                 </div>
 
                 <div className="comment-body">
-                    {comment.content}
+                    {renderContentWithGifs(comment.content)}
                 </div>
 
 
@@ -412,6 +420,7 @@ export function PostDetailPage() {
                         onClick={() => {
                             setReplyingTo(null);
                             setNewComment("");
+                            setSelectedCommentGif(null);
                         }}
                         style={{ marginLeft: '10px', background: 'none', border: 'none', color: '#ff4d4f', cursor: 'pointer', fontWeight: 'bold' }}
                     >
@@ -419,30 +428,52 @@ export function PostDetailPage() {
                     </button>
                 </div>
             )}
-            <div className="comment-input-wrapper">
-                <input
-                    type="text"
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    placeholder={isReplyForm ? "대댓글을 입력하세요" : "댓글을 입력하세요"}
-                    className="comment-input"
-                    autoFocus={isReplyForm}
-                />
-                <div className="comment-options">
-                    <label className="anonymous-checkbox-label">
-                        <input
-                            type="checkbox"
-                            checked={isAnonymous}
-                            onChange={(e) => setIsAnonymous(e.target.checked)}
-                            className="hidden-checkbox"
-                        />
-                        <span className="custom-checkbox"></span>
-                        익명
-                    </label>
-                    <button type="submit" className="comment-submit" disabled={isSubmitting}>
-                        {isSubmitting ? '등록 중...' : '등록'}
+            <div className="comment-form-inner" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div className="comment-input-wrapper">
+                    <input
+                        type="text"
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        placeholder={isReplyForm ? "대댓글을 입력하세요" : "댓글을 입력하세요"}
+                        className="comment-input"
+                        autoFocus={isReplyForm}
+                    />
+                    <button 
+                        type="button"
+                        onClick={() => setShowCommentGifPicker(true)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', display: 'flex', alignItems: 'center' }}
+                        title="GIF 추가"
+                    >
+                        <img src="/gif_box.svg" alt="GIF" width="22" height="22" style={{ opacity: 0.7 }} />
                     </button>
+                    <div className="comment-options">
+                        <label className="anonymous-checkbox-label">
+                            <input
+                                type="checkbox"
+                                checked={isAnonymous}
+                                onChange={(e) => setIsAnonymous(e.target.checked)}
+                                className="hidden-checkbox"
+                            />
+                            <span className="custom-checkbox"></span>
+                            익명
+                        </label>
+                        <button type="submit" className="comment-submit" disabled={isSubmitting}>
+                            {isSubmitting ? '등록 중...' : '등록'}
+                        </button>
+                    </div>
                 </div>
+                {selectedCommentGif && (
+                    <div className="comment-preview" style={{ position: 'relative', padding: '12px', background: '#f9f9f9', borderRadius: '8px', border: '1px solid #eee', alignSelf: 'flex-start' }}>
+                        <button 
+                            type="button" 
+                            onClick={() => setSelectedCommentGif(null)}
+                            style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(0,0,0,0.5)', color: 'white', border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}
+                        >
+                            ✕
+                        </button>
+                        <img src={selectedCommentGif} alt="Selected GIF" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '4px' }} />
+                    </div>
+                )}
             </div>
         </form>
     );
@@ -489,9 +520,7 @@ export function PostDetailPage() {
                         <hr className="divider" />
 
                         <div className="post-content">
-                            {post.content.split('\n').map((line, i) => (
-                                <React.Fragment key={i}>{line}<br /></React.Fragment>
-                            ))}
+                            {renderContentWithGifs(post.content)}
                         </div>
 
                         <div className="post-actions" style={{ display: 'flex', gap: '10px' }}>
@@ -579,6 +608,12 @@ export function PostDetailPage() {
             ) : (
                 <div className="error-message">게시글이 존재하지 않습니다.</div>
             )}
+            
+            <GifPicker
+                isOpen={showCommentGifPicker}
+                onClose={() => setShowCommentGifPicker(false)}
+                onSelect={(gifUrl) => setSelectedCommentGif(gifUrl)}
+            />
         </div>
     );
 }

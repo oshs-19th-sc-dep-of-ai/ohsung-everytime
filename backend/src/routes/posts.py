@@ -1,4 +1,5 @@
 from flask import Blueprint, request, session, jsonify
+import re
 from ..utils.database_util import DatabaseManager
 
 posts_bp = Blueprint('posts', __name__)
@@ -49,8 +50,9 @@ def get_posts():
 
     posts = []
     for row in rows:
-        # 본문 미리보기: 최대 100자
-        content_preview = row[2][:100] + "…" if row[2] and len(row[2]) > 100 else row[2]
+        raw_content = row[2] or ""
+        clean_content = re.sub(r'\[gif:.*?\]', '[GIF]', raw_content).strip()
+        content_preview = clean_content[:100] + "…" if len(clean_content) > 100 else clean_content
         is_anon = bool(row[6])
 
         posts.append({

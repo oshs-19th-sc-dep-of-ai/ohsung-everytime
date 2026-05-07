@@ -35,3 +35,17 @@ body {
     flex-direction: column;
     min-height: 100vh;
 }
+
+/* Inline GIF styles for Posts and Comments */
+.inline-gif-wrapper {
+    margin: 8px 0;
+    max-width: 100%;
+}
+
+.inline-gif {
+    max-width: 100%;
+    max-height: 250px;
+    border-radius: 8px;
+    object-fit: contain;
+    background-color: #f5f5f5;
+}
