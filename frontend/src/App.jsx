@@ -204,9 +204,9 @@ function App() {
             window.location.href = "/login";
           } else {
             // 세션 정보 동기화
-            localStorage.setItem("is_mod", res.data.is_mod ? "true" : "false");
+            localStorage.setItem("eta_admin", res.data.eta_admin ? "true" : "false");
             // status 값도 동기화 (기존 코드에서 status를 "admin"으로 기대하는 부분이 있을 수 있으므로 백엔드 응답을 따름)
-            if (res.data.is_mod) {
+            if (res.data.eta_admin) {
               localStorage.setItem("status", "admin");
             } else {
               localStorage.setItem("status", "success");

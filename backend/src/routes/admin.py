@@ -5,15 +5,15 @@ from ..utils.database_util import DatabaseManager
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
-def is_mod():
-    return session.get('is_mod') is True
+def eta_admin():
+    return session.get('eta_admin') is True
 
 # ────────────────────────────────────────────
 # 1. 댓글 / 게시물 강제 삭제
 # ────────────────────────────────────────────
 @admin_bp.route('/posts/<int:post_id>', methods=['DELETE'])
 def admin_delete_post(post_id):
-    if not is_mod():
+    if not eta_admin():
         return jsonify({"status": "error", "message": "모더레이터 권한이 필요합니다."}), 403
 
     db = DatabaseManager()
@@ -32,7 +32,7 @@ def admin_delete_post(post_id):
 
 @admin_bp.route('/comments/<int:comment_id>', methods=['DELETE'])
 def admin_delete_comment(comment_id):
-    if not is_mod():
+    if not eta_admin():
         return jsonify({"status": "error", "message": "모더레이터 권한이 필요합니다."}), 403
 
     db = DatabaseManager()
@@ -54,7 +54,7 @@ def admin_delete_comment(comment_id):
 # ────────────────────────────────────────────
 @admin_bp.route('/comments/<int:comment_id>/history', methods=['GET'])
 def admin_comment_history(comment_id):
-    if not is_mod():
+    if not eta_admin():
         return jsonify({"status": "error", "message": "모더레이터 권한이 필요합니다."}), 403
 
     db = DatabaseManager()
@@ -88,7 +88,7 @@ def admin_comment_history(comment_id):
 # ────────────────────────────────────────────
 @admin_bp.route('/notifications/push', methods=['POST'])
 def admin_push_notification():
-    if not is_mod():
+    if not eta_admin():
         return jsonify({"status": "error", "message": "모더레이터 권한이 필요합니다."}), 403
 
     data = request.get_json(silent=True) or {}
@@ -160,7 +160,7 @@ def admin_push_notification():
 # ────────────────────────────────────────────
 @admin_bp.route('/trace/posts/<int:post_id>', methods=['GET'])
 def admin_trace_post_author(post_id):
-    if not is_mod():
+    if not eta_admin():
         return jsonify({"status": "error", "message": "모더레이터 권한이 필요합니다."}), 403
 
     db = DatabaseManager()
@@ -189,7 +189,7 @@ def admin_trace_post_author(post_id):
 
 @admin_bp.route('/trace/comments/<int:comment_id>', methods=['GET'])
 def admin_trace_comment_author(comment_id):
-    if not is_mod():
+    if not eta_admin():
         return jsonify({"status": "error", "message": "모더레이터 권한이 필요합니다."}), 403
 
     db = DatabaseManager()
@@ -221,7 +221,7 @@ def admin_trace_comment_author(comment_id):
 # ────────────────────────────────────────────
 @admin_bp.route('/test/lunch-push', methods=['POST'])
 def admin_test_lunch_push():
-    if not is_mod():
+    if not eta_admin():
         return jsonify({"status": "error", "message": "모더레이터 권한이 필요합니다."}), 403
 
     from ..utils.scheduler_util import send_lunch_menu_notification
@@ -233,7 +233,7 @@ def admin_test_lunch_push():
 
 @admin_bp.route('/test/dinner-push', methods=['POST'])
 def admin_test_dinner_push():
-    if not is_mod():
+    if not eta_admin():
         return jsonify({"status": "error", "message": "모더레이터 권한이 필요합니다."}), 403
 
     from ..utils.scheduler_util import send_dinner_menu_notification

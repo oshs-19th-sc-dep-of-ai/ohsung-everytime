@@ -468,7 +468,7 @@ export default function AdminPage() {
   
   const { isOnline } = useNetwork();
 
-  const isMod = localStorage.getItem("is_mod") === "true";
+  const isMod = localStorage.getItem("eta_admin") === "true";
   const userName = localStorage.getItem("student_name") || "사용자";
 
   return (

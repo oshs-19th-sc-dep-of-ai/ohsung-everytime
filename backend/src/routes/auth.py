@@ -23,7 +23,7 @@ def login():
     # 학생 로그인 처리
     student = db.query(
         """
-        SELECT student_id, student_name, is_admin, is_mod FROM Students
+        SELECT student_id, student_name, rent_admin, eta_admin FROM Students
         WHERE student_id = %(student_id)s AND student_pw = SHA2(%(student_pw)s, 256)
         """,
         student_id=input_student_id,
@@ -35,37 +35,37 @@ def login():
 
     if student:
         student = student[0]
-        student_id, student_name, is_admin, is_mod = student
+        student_id, student_name, rent_admin, eta_admin = student
 
         # 세션 사용 사용자 정보 저장
         session.permanent = True
         session['student_id'] = student_id
         session['student_name'] = student_name
         session['session_student_id'] = student_id  # 다른 라우트 호환용
-        session['is_admin'] = bool(is_admin)
-        session['is_mod'] = bool(is_mod)
+        session['rent_admin'] = bool(rent_admin)
+        session['eta_admin'] = bool(eta_admin)
 
-        if is_mod:
-            # 모더레이터 키 명시적 설정 (이제 is_admin만으로는 설정되지 않음)
+        if eta_admin:
+            # 모더레이터 키 명시적 설정 (이제 rent_admin만으로는 설정되지 않음)
             session['admin_id'] = student_id
             session['admin_name'] = student_name
 
             return jsonify({
                 "message": "모더레이터 로그인 성공!",
                 "status": "admin", # 기존 클라이언트 호환
-                "is_admin": bool(is_admin),
-                "is_mod": True,
+                "rent_admin": bool(rent_admin),
+                "eta_admin": True,
                 "admin_id": student_id,
                 "student_id": student_id,
                 "student_name": student_name
             }), 200
         else:
-            # 일반 학생 (is_admin만 있는 경우도 여기 포함됨)
+            # 일반 학생 (rent_admin만 있는 경우도 여기 포함됨)
             return jsonify({
                 "message": "로그인 성공!",
                 "status": "success",
-                "is_admin": bool(is_admin),
-                "is_mod": False,
+                "rent_admin": bool(rent_admin),
+                "eta_admin": False,
                 "student_id": student_id,
                 "student_name": student_name
             }), 200
@@ -87,14 +87,14 @@ def logout():
 # 세션 확인
 @auth_bp.route('/check_session', methods=['GET'])
 def check_session():
-    # 이제 admin_id 세션은 is_mod인 경우에만 생성됨
+    # 이제 admin_id 세션은 eta_admin인 경우에만 생성됨
     logged = bool(session.get("student_id") or session.get("admin_id"))
     return jsonify({
         "student_id": session.get("student_id"),
         "student_name": session.get("student_name"),
         "admin_id": session.get("admin_id"),
-        "is_admin": bool(session.get("is_admin")),
-        "is_mod": bool(session.get("is_mod")),
+        "rent_admin": bool(session.get("rent_admin")),
+        "eta_admin": bool(session.get("eta_admin")),
         "status": "success" if logged else "unauthorized"
     }), 200
 
