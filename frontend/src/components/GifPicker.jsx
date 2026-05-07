@@ -3,8 +3,7 @@ import {
     Grid,
     SearchBar,
     SearchContext,
-    SearchContextManager,
-    SuggestionBar,
+    SearchContextManager
 } from '@giphy/react-components';
 import { GIPHY_API_KEY } from '../config';
 import './GifPicker.css';
@@ -23,7 +22,6 @@ function GifPickerInner({ onSelect, onClose }) {
 
                 <div className="gif-picker-search-area">
                     <SearchBar placeholder="GIF 검색..." />
-                    <SuggestionBar />
                 </div>
 
                 <div className="gif-picker-grid-wrapper">
