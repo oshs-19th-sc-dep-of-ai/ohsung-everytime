@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE_URL } from "../config";
@@ -6,7 +6,8 @@ import { useToast } from "../contexts/ToastContext.jsx";
 import { useNetwork } from '../contexts/NetworkContext.jsx';
 import { offlineQueue } from '../utils/offlineQueue.js';
 import { GifPicker } from './GifPicker.jsx';
-import { renderContentWithGifs } from '../utils/renderContentWithGifs.jsx';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 import './PostWritePage.css';
 
 export const PostWritePage = () => {
@@ -15,12 +16,65 @@ export const PostWritePage = () => {
     const [isAnonymous, setIsAnonymous] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showGifPicker, setShowGifPicker] = useState(false);
-    const [selectedGif, setSelectedGif] = useState(null);
+    const quillRef = useRef(null);
+    const hoveredImgRef = useRef(null);
+    const [hoveredImgState, setHoveredImgState] = useState(null);
     const { isOnline } = useNetwork();
 
     useEffect(() => {
         window.scrollTo(0, 0);
+        
+        const handleMouseOver = (e) => {
+            if (e.target.tagName === 'IMG' && e.target.closest('.ql-editor')) {
+                const rect = e.target.getBoundingClientRect();
+                const newData = {
+                    element: e.target,
+                    top: rect.top + window.scrollY,
+                    left: rect.left + window.scrollX,
+                    width: rect.width
+                };
+                hoveredImgRef.current = newData;
+                setHoveredImgState(newData);
+            }
+        };
+        const handleMouseMove = (e) => {
+            if (hoveredImgRef.current) {
+                const isOverImg = e.target === hoveredImgRef.current.element;
+                const isOverBtn = e.target.closest('.gif-delete-btn');
+                if (!isOverImg && !isOverBtn) {
+                    hoveredImgRef.current = null;
+                    setHoveredImgState(null);
+                }
+            }
+        };
+
+        document.addEventListener('mouseover', handleMouseOver);
+        document.addEventListener('mousemove', handleMouseMove);
+        return () => {
+            document.removeEventListener('mouseover', handleMouseOver);
+            document.removeEventListener('mousemove', handleMouseMove);
+        };
     }, []);
+
+    const handleDeleteImage = (e) => {
+        if (!hoveredImgState || !quillRef.current) return;
+        const editor = quillRef.current.getEditor();
+        
+        const QuillObj = ReactQuill.Quill || window.Quill;
+        if (QuillObj) {
+            const blot = QuillObj.find(hoveredImgState.element);
+            if (blot) {
+                const offset = editor.getIndex(blot);
+                editor.deleteText(offset, 1);
+            }
+        } else {
+            hoveredImgState.element.remove();
+            setContent(editor.root.innerHTML);
+        }
+        
+        setHoveredImgState(null);
+        hoveredImgRef.current = null;
+    };
 
     const navigate = useNavigate();
     const { showToast } = useToast();
@@ -30,12 +84,8 @@ export const PostWritePage = () => {
         
         if (isSubmitting) return;
 
-        if (!title.trim()) {
-            showToast("제목을 입력해주세요.");
-            return;
-        }
-        if (!content.trim() && !selectedGif) {
-            showToast("내용이나 GIF를 추가해주세요.");
+        if (!content.trim() || content === '<p><br></p>') {
+            showToast("내용을 입력해주세요.");
             return;
         }
         if (title.length > 255) {
@@ -43,15 +93,13 @@ export const PostWritePage = () => {
             return;
         }
 
-        const finalContent = content + (selectedGif ? (content.trim() ? '\n' : '') + `[gif:${selectedGif}]` : '');
-
         if (!isOnline) {
             await offlineQueue.enqueue({
                 url: `${API_BASE_URL}/posts`,
                 method: 'POST',
                 body: {
                     title: title,
-                    content: finalContent,
+                    content: content,
                     is_anonymous: isAnonymous
                 }
             });
@@ -64,7 +112,7 @@ export const PostWritePage = () => {
             setIsSubmitting(true);
             const response = await axios.post(`${API_BASE_URL}/posts`, {
                 title: title,
-                content: finalContent,
+                content: content,
                 is_anonymous: isAnonymous
             }, {
                 withCredentials: true
@@ -117,24 +165,17 @@ export const PostWritePage = () => {
                                 <img src="/gif_box.svg" alt="GIF" width="18" height="18" /> GIF 추가
                             </button>
                         </div>
-                        <textarea
-                            className="content-input"
-                            placeholder="내용을 입력하세요"
+                        <ReactQuill
+                            ref={quillRef}
+                            theme="snow"
+                            placeholder="내용을 자유롭게 입력하세요..."
                             value={content}
-                            onChange={(e) => setContent(e.target.value)}
+                            onChange={setContent}
+                            modules={{
+                                toolbar: false // 툴바 숨김 (커스텀 버튼만 사용)
+                            }}
+                            style={{ minHeight: '400px', backgroundColor: '#fff', borderBottomLeftRadius: '8px', borderBottomRightRadius: '8px' }}
                         />
-                        {selectedGif && (
-                            <div className="content-preview" style={{ position: 'relative', marginTop: '10px', padding: '10px', background: '#f9f9f9', borderRadius: '8px', border: '1px solid #eee', display: 'inline-block' }}>
-                                <button 
-                                    type="button" 
-                                    onClick={() => setSelectedGif(null)}
-                                    style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(0,0,0,0.5)', color: 'white', border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}
-                                >
-                                    ✕
-                                </button>
-                                <img src={selectedGif} alt="Selected GIF" style={{ maxWidth: '100%', maxHeight: '250px', borderRadius: '4px' }} />
-                            </div>
-                        )}
                     </div>
 
                     <div className="form-footer">
@@ -170,8 +211,51 @@ export const PostWritePage = () => {
             <GifPicker
                 isOpen={showGifPicker}
                 onClose={() => setShowGifPicker(false)}
-                onSelect={(gifUrl) => setSelectedGif(gifUrl)}
+                onSelect={(gifUrl) => {
+                    if (quillRef.current) {
+                        const quill = quillRef.current.getEditor();
+                        // 포커스가 없으면 맨 끝에, 있으면 커서 위치에
+                        const range = quill.getSelection(true);
+                        const index = range ? range.index : quill.getLength();
+                        
+                        // GIF 앞뒤로 줄바꿈 추가
+                        quill.insertText(index, '\n');
+                        quill.insertEmbed(index + 1, 'image', gifUrl);
+                        quill.insertText(index + 2, '\n');
+                        quill.setSelection(index + 3);
+                    }
+                    setShowGifPicker(false);
+                }}
             />
+
+            {hoveredImgState && (
+                <button
+                    type="button"
+                    className="gif-delete-btn"
+                    onClick={handleDeleteImage}
+                    style={{
+                        position: 'absolute',
+                        top: hoveredImgState.top + 4,
+                        left: hoveredImgState.left + hoveredImgState.width - 36,
+                        zIndex: 9999,
+                        background: '#ffffff',
+                        color: '#ff4d4f',
+                        border: '1px solid #eee',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                        borderRadius: '50%',
+                        width: '32px',
+                        height: '32px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '16px',
+                        fontWeight: 'bold'
+                    }}
+                >
+                    ✕
+                </button>
+            )}
         </div>
     );
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE_URL } from "../config";
@@ -8,6 +8,8 @@ import { offlineQueue } from '../utils/offlineQueue.js';
 import { useOfflineData } from '../hooks/useOfflineData.js';
 import { GifPicker } from './GifPicker.jsx';
 import { renderContentWithGifs } from '../utils/renderContentWithGifs.jsx';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 import './PostDetailPage.css';
 
 const POPULAR_COMMENT_THRESHOLD = 5;
@@ -49,8 +51,9 @@ export function PostDetailPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState(null);
     const [showCommentGifPicker, setShowCommentGifPicker] = useState(false);
-    const [selectedCommentGif, setSelectedCommentGif] = useState(null);
-
+    const quillRef = useRef(null);
+    const hoveredImgRef = useRef(null);
+    const [hoveredImgState, setHoveredImgState] = useState(null);
 
     const [replyingTo, setReplyingTo] = useState(null);
 
@@ -122,6 +125,59 @@ export function PostDetailPage() {
     useEffect(() => {
         setIsLoading(isCachedLoading && !cachedDetails);
     }, [isCachedLoading, cachedDetails]);
+
+    useEffect(() => {
+        const handleMouseOver = (e) => {
+            if (e.target.tagName === 'IMG' && e.target.closest('.ql-editor')) {
+                const rect = e.target.getBoundingClientRect();
+                const newData = {
+                    element: e.target,
+                    top: rect.top + window.scrollY,
+                    left: rect.left + window.scrollX,
+                    width: rect.width
+                };
+                hoveredImgRef.current = newData;
+                setHoveredImgState(newData);
+            }
+        };
+        const handleMouseMove = (e) => {
+            if (hoveredImgRef.current) {
+                const isOverImg = e.target === hoveredImgRef.current.element;
+                const isOverBtn = e.target.closest('.gif-delete-btn');
+                if (!isOverImg && !isOverBtn) {
+                    hoveredImgRef.current = null;
+                    setHoveredImgState(null);
+                }
+            }
+        };
+
+        document.addEventListener('mouseover', handleMouseOver);
+        document.addEventListener('mousemove', handleMouseMove);
+        return () => {
+            document.removeEventListener('mouseover', handleMouseOver);
+            document.removeEventListener('mousemove', handleMouseMove);
+        };
+    }, []);
+
+    const handleDeleteImage = (e, targetQuillRef, setter) => {
+        if (!hoveredImgState || !targetQuillRef.current) return;
+        const editor = targetQuillRef.current.getEditor();
+        
+        const QuillObj = ReactQuill.Quill || window.Quill;
+        if (QuillObj) {
+            const blot = QuillObj.find(hoveredImgState.element);
+            if (blot) {
+                const offset = editor.getIndex(blot);
+                editor.deleteText(offset, 1);
+            }
+        } else {
+            hoveredImgState.element.remove();
+            setter(editor.root.innerHTML);
+        }
+        
+        setHoveredImgState(null);
+        hoveredImgRef.current = null;
+    };
 
     useEffect(() => {
         // 즉시 맨 위로 스크롤
@@ -236,22 +292,19 @@ export function PostDetailPage() {
 
     const handleCommentSubmit = async (e) => {
         e.preventDefault();
-        if ((!newComment.trim() && !selectedCommentGif) || isSubmitting) return;
-
-        const finalComment = newComment + (selectedCommentGif ? (newComment.trim() ? '\n' : '') + `[gif:${selectedCommentGif}]` : '');
+        if (!newComment.trim() || newComment === '<p><br></p>' || isSubmitting) return;
 
         if (!isOnline) {
             await offlineQueue.enqueue({
                 url: `${API_BASE_URL}/posts/${postId}/comments`,
                 method: 'POST',
                 body: {
-                    content: finalComment,
+                    content: newComment,
                     is_anonymous: isAnonymous,
                     parent_id: replyingTo
                 }
             });
             setNewComment("");
-            setSelectedCommentGif(null);
             setReplyingTo(null);
             showToast("오프라인 상태입니다. 큐에 저장되어 온라인 복귀 시 댓글이 등록됩니다.");
             return;
@@ -260,13 +313,12 @@ export function PostDetailPage() {
         try {
             setIsSubmitting(true);
             await axios.post(`${API_BASE_URL}/posts/${postId}/comments`, {
-                content: finalComment,
+                content: newComment,
                 is_anonymous: isAnonymous,
                 parent_id: replyingTo
             }, { withCredentials: true });
 
             setNewComment("");
-            setSelectedCommentGif(null);
             setReplyingTo(null); // 전송 후 상태 초기화
             showToast("댓글이 작성되었습니다.");
 
@@ -420,7 +472,6 @@ export function PostDetailPage() {
                         onClick={() => {
                             setReplyingTo(null);
                             setNewComment("");
-                            setSelectedCommentGif(null);
                         }}
                         style={{ marginLeft: '10px', background: 'none', border: 'none', color: '#ff4d4f', cursor: 'pointer', fontWeight: 'bold' }}
                     >
@@ -429,14 +480,16 @@ export function PostDetailPage() {
                 </div>
             )}
             <div className="comment-form-inner" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div className="comment-input-wrapper">
-                    <input
-                        type="text"
+                <div className="comment-input-wrapper" style={{ padding: '4px 16px' }}>
+                    <ReactQuill
+                        ref={quillRef}
+                        theme="snow"
                         value={newComment}
-                        onChange={(e) => setNewComment(e.target.value)}
+                        onChange={setNewComment}
                         placeholder={isReplyForm ? "대댓글을 입력하세요" : "댓글을 입력하세요"}
-                        className="comment-input"
-                        autoFocus={isReplyForm}
+                        modules={{ toolbar: false }}
+                        style={{ flex: 1, minWidth: 0, border: 'none' }}
+                        className="comment-quill"
                     />
                     <button 
                         type="button"
@@ -462,18 +515,6 @@ export function PostDetailPage() {
                         </button>
                     </div>
                 </div>
-                {selectedCommentGif && (
-                    <div className="comment-preview" style={{ position: 'relative', padding: '12px', background: '#f9f9f9', borderRadius: '8px', border: '1px solid #eee', alignSelf: 'flex-start' }}>
-                        <button 
-                            type="button" 
-                            onClick={() => setSelectedCommentGif(null)}
-                            style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(0,0,0,0.5)', color: 'white', border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}
-                        >
-                            ✕
-                        </button>
-                        <img src={selectedCommentGif} alt="Selected GIF" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '4px' }} />
-                    </div>
-                )}
             </div>
         </form>
     );
@@ -612,8 +653,48 @@ export function PostDetailPage() {
             <GifPicker
                 isOpen={showCommentGifPicker}
                 onClose={() => setShowCommentGifPicker(false)}
-                onSelect={(gifUrl) => setSelectedCommentGif(gifUrl)}
+                onSelect={(gifUrl) => {
+                    if (quillRef.current) {
+                        const quill = quillRef.current.getEditor();
+                        const range = quill.getSelection(true);
+                        const index = range ? range.index : quill.getLength();
+                        quill.insertText(index, '\n');
+                        quill.insertEmbed(index + 1, 'image', gifUrl);
+                        quill.insertText(index + 2, '\n');
+                        quill.setSelection(index + 3);
+                    }
+                    setShowCommentGifPicker(false);
+                }}
             />
+
+            {hoveredImgState && (
+                <button
+                    type="button"
+                    className="gif-delete-btn"
+                    onClick={(e) => handleDeleteImage(e, quillRef, setNewComment)}
+                    style={{
+                        position: 'absolute',
+                        top: hoveredImgState.top + 4,
+                        left: hoveredImgState.left + hoveredImgState.width - 36,
+                        zIndex: 9999,
+                        background: '#ffffff',
+                        color: '#ff4d4f',
+                        border: '1px solid #eee',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                        borderRadius: '50%',
+                        width: '32px',
+                        height: '32px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '16px',
+                        fontWeight: 'bold'
+                    }}
+                >
+                    ✕
+                </button>
+            )}
         </div>
     );
 }

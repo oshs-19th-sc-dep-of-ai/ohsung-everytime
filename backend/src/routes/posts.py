@@ -51,7 +51,15 @@ def get_posts():
     posts = []
     for row in rows:
         raw_content = row[2] or ""
-        clean_content = re.sub(r'\[gif:.*?\]', '[GIF]', raw_content).strip()
+        # 1. <img> 태그를 [이미지] 로 변경
+        clean_content = re.sub(r'<img[^>]*>', '[이미지]', raw_content)
+        # 2. [gif:...] 기존 포맷을 [GIF] 로 변경
+        clean_content = re.sub(r'\[gif:.*?\]', '[GIF]', clean_content)
+        # 3. 나머지 모든 HTML 태그를 공백으로 치환하여 제거
+        clean_content = re.sub(r'<[^>]+>', ' ', clean_content)
+        # 4. 연속된 공백을 하나로 압축
+        clean_content = re.sub(r'\s+', ' ', clean_content).strip()
+        
         content_preview = clean_content[:100] + "…" if len(clean_content) > 100 else clean_content
         is_anon = bool(row[6])
 
