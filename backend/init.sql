@@ -78,3 +78,16 @@ CREATE TABLE IF NOT EXISTS fcm_tokens (
     INDEX idx_fcm_user_id (user_id),
     FOREIGN KEY (user_id) REFERENCES Students (student_id) ON DELETE CASCADE
 );
+
+-- 시간표 테이블
+CREATE TABLE IF NOT EXISTS Timetable (
+    timetable_id INT AUTO_INCREMENT PRIMARY KEY,
+    student_id CHAR(7) NOT NULL,
+    day_of_week TINYINT NOT NULL, -- 1=월, 2=화, 3=수, 4=목, 5=금
+    period TINYINT NOT NULL, -- 교시
+    subject_name VARCHAR(100) NOT NULL, -- 과목명
+    location VARCHAR(20) DEFAULT NULL, -- 교실 (101~313)
+    memo TEXT DEFAULT NULL, -- 메모
+    UNIQUE KEY uq_student_schedule (student_id, day_of_week, period),
+    FOREIGN KEY (student_id) REFERENCES Students (student_id) ON DELETE CASCADE
+);
