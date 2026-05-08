@@ -448,3 +448,18 @@
         border-bottom: 1px solid #eee;
     }
 }
+
+/* 댓글 네비게이션 바 위에 고정 */
+.comment-form {
+  position: fixed;
+  bottom: 65px;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: #fff;
+  border-top: 1px solid #eee;
+  padding: 6px 12px;
+  box-shadow: 0 -2px 12px rgba(0,0,0,0.07);
+  max-height: 80px;
+  overflow: hidden;
+}
