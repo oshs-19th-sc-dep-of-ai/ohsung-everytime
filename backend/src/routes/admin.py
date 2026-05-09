@@ -249,3 +249,62 @@ def admin_test_dinner_push():
     except Exception as e:
         return jsonify({"status": "error", "message": f"석식 알람 테스트 실패: {str(e)}"}), 500
 
+
+# ────────────────────────────────────────────
+# 6. 삭제 로그 조회
+# ────────────────────────────────────────────
+@admin_bp.route('/deleted-logs', methods=['GET'])
+def admin_deleted_logs():
+    if not eta_admin():
+        return jsonify({"status": "error", "message": "모더레이터 권한이 필요합니다."}), 403
+
+    db = DatabaseManager()
+    
+    post_sql = """
+        SELECT p.post_id, p.title, s.student_name, p.created_at
+        FROM Posts p
+        JOIN Students s ON p.author_id = s.student_id
+        WHERE p.is_deleted = TRUE
+        ORDER BY p.created_at DESC
+        LIMIT 50
+    """
+    deleted_posts = db.query(post_sql).result
+
+    comment_sql = """
+        SELECT c.comment_id, c.content, s.student_name, c.created_at, c.post_id
+        FROM Comments c
+        JOIN Students s ON c.author_id = s.student_id
+        WHERE c.is_deleted = TRUE
+        ORDER BY c.created_at DESC
+        LIMIT 50
+    """
+    deleted_comments = db.query(comment_sql).result
+
+    logs = []
+    for row in deleted_posts:
+        logs.append({
+            "type": "post",
+            "id": row[0],
+            "title": row[1],
+            "author": row[2],
+            "created_at": row[3].strftime('%Y-%m-%d %H:%M:%S') if row[3] else None
+        })
+
+    for row in deleted_comments:
+        import re
+        clean_content = re.sub(r'<[^>]+>', ' ', row[1]).strip()
+        logs.append({
+            "type": "comment",
+            "id": row[0],
+            "content": clean_content[:100] + "…" if len(clean_content) > 100 else clean_content,
+            "author": row[2],
+            "created_at": row[3].strftime('%Y-%m-%d %H:%M:%S') if row[3] else None,
+            "post_id": row[4]
+        })
+
+    logs.sort(key=lambda x: x['created_at'], reverse=True)
+
+    return jsonify({
+        "status": "success",
+        "data": logs
+    })

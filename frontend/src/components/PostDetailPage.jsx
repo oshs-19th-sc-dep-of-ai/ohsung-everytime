@@ -71,20 +71,10 @@ export function PostDetailPage() {
     // 관리자(모더레이터) 여부 확인 (이제 eta_admin이 true인 경우만 관리자 기능을 사용할 수 있음)
     const isAdmin = localStorage.getItem("eta_admin") === "true";
 
-    // 관리자 삭제된 항목 보기 토글
-    const [showDeleted, setShowDeleted] = useState(() => {
-        return localStorage.getItem("show_deleted") === "true";
-    });
-
     const fetchPostDetails = async () => {
-        const params = {};
-        if (isAdmin && showDeleted) params.include_deleted = 'true';
-        const queryStr = new URLSearchParams(params).toString();
-        const suffix = queryStr ? `?${queryStr}` : '';
-
         const [postRes, commentsRes] = await Promise.all([
-            axios.get(`${API_BASE_URL}/posts/${postId}${suffix}`, { withCredentials: true }),
-            axios.get(`${API_BASE_URL}/posts/${postId}/comments${suffix}`, { withCredentials: true })
+            axios.get(`${API_BASE_URL}/posts/${postId}`, { withCredentials: true }),
+            axios.get(`${API_BASE_URL}/posts/${postId}/comments`, { withCredentials: true })
         ]);
         
         let pData = null;
@@ -113,7 +103,7 @@ export function PostDetailPage() {
         return { post: pData, comments: cData };
     };
 
-    const { data: cachedDetails, isStale, loading: isCachedLoading, error: cachedError, refetch } = useOfflineData(`post_${postId}_${showDeleted}`, fetchPostDetails, { store: 'postDetails' });
+    const { data: cachedDetails, isStale, loading: isCachedLoading, error: cachedError, refetch } = useOfflineData(`post_${postId}_false`, fetchPostDetails, { store: 'postDetails' });
 
     useEffect(() => {
         if (cachedDetails) {

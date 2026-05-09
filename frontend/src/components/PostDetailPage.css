@@ -79,6 +79,13 @@
     min-height: 100px;
 }
 
+/* 렌더링된 리치 텍스트 에디터 컨텐츠의 높이 자동 조절 */
+.rich-text-content.ql-editor {
+    height: auto;
+    min-height: min-content;
+    overflow-y: visible;
+}
+
 /* 게시글 공감 버튼 */
 .post-actions {
     display: flex;
@@ -253,6 +260,23 @@
     line-height: 1.5;
     color: #333;
     word-break: break-word;
+}
+
+/* 댓글 본문 내 GIF/이미지 크기 제한 */
+.comment-body img,
+.comment-body .inline-gif {
+    max-width: 160px;
+    max-height: 120px;
+    border-radius: 6px;
+    object-fit: contain;
+}
+
+/* 댓글 입력 에디터 내 GIF/이미지 미리보기 크기 제한 */
+.comment-quill .ql-editor img {
+    max-width: 120px;
+    max-height: 90px;
+    border-radius: 6px;
+    object-fit: contain;
 }
 
 .comment-like {

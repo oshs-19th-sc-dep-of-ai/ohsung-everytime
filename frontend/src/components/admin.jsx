@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "./admin.css";
 import { API_BASE_URL } from "../config";
 
@@ -453,61 +453,64 @@ function ChangePasswordTab() {
   );
 }
 
-// 삭제된 항목 보기 토글
-function DeletedItemsToggle() {
-  const [showDeleted, setShowDeleted] = useState(() => {
-    return localStorage.getItem("show_deleted") === "true";
-  });
+// 탭 5: 삭제 로그
+function DeletedLogsTab() {
+  const [logs, setLogs] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleToggle = () => {
-    const newValue = !showDeleted;
-    setShowDeleted(newValue);
-    localStorage.setItem("show_deleted", newValue.toString());
+  const fetchLogs = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const data = await apiFetch("/admin/deleted-logs");
+      setLogs(data.data);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // 탭 열릴 때 자동 조회
+  useEffect(() => {
+    fetchLogs();
+  }, []);
+
   return (
-    <div style={{ marginTop: '24px' }}>
-      <p className="admin-section-title">관리자 설정</p>
-      <div className="admin-card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <div style={{ fontWeight: '600', fontSize: '15px', marginBottom: '4px' }}>🗑️ 삭제된 항목 보기</div>
-            <div style={{ fontSize: '13px', color: '#888' }}>게시글, 댓글에서 논리적으로 삭제된 항목을 확인합니다</div>
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <p className="admin-section-title" style={{ margin: 0 }}>삭제 로그</p>
+        <LoadingBtn loading={loading} onClick={fetchLogs} className="admin-btn--primary" style={{ padding: '6px 12px', fontSize: '13px' }}>
+          새로고침
+        </LoadingBtn>
+      </div>
+      <div className="admin-card" style={{ marginTop: '12px' }}>
+        {error && <div className="admin-result admin-result--error">⚠️ {error}</div>}
+        
+        {logs !== null && logs.length === 0 ? (
+          <div className="admin-empty">삭제된 항목이 없습니다.</div>
+        ) : logs !== null ? (
+          <div className="admin-history-list">
+            {logs.map((log, i) => (
+              <div key={i} className="admin-history-item" style={{ borderLeft: log.type === 'post' ? '3px solid #2196f3' : '3px solid #4caf50', paddingLeft: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <span style={{ fontWeight: 'bold', color: log.type === 'post' ? '#1976d2' : '#388e3c', fontSize: '13px' }}>
+                    {log.type === 'post' ? '게시물' : '댓글'} (ID: {log.id})
+                  </span>
+                  <span className="admin-history-item__time">🕐 {log.created_at}</span>
+                </div>
+                <div style={{ fontSize: '14px', marginBottom: '8px', wordBreak: 'break-all' }}>
+                  {log.title || log.content}
+                </div>
+                <div style={{ fontSize: '12px', color: '#666' }}>
+                  작성자: {log.author} {log.post_id && `(원본 게시물 ID: ${log.post_id})`}
+                </div>
+              </div>
+            ))}
           </div>
-          <button
-            onClick={handleToggle}
-            className="admin-deleted-toggle-btn"
-            style={{
-              width: '52px',
-              height: '28px',
-              borderRadius: '14px',
-              border: 'none',
-              cursor: 'pointer',
-              position: 'relative',
-              transition: 'background-color 0.3s',
-              backgroundColor: showDeleted ? '#ff4d4f' : '#ccc',
-              flexShrink: 0,
-            }}
-          >
-            <span
-              style={{
-                position: 'absolute',
-                top: '3px',
-                left: showDeleted ? '26px' : '3px',
-                width: '22px',
-                height: '22px',
-                borderRadius: '50%',
-                backgroundColor: '#fff',
-                transition: 'left 0.3s',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-              }}
-            />
-          </button>
-        </div>
-        {showDeleted && (
-          <div style={{ marginTop: '12px', padding: '10px', background: '#fff5f5', borderRadius: '6px', fontSize: '13px', color: '#c62828', fontWeight: '500' }}>
-            ⚠️ 삭제된 항목 보기가 활성화되었습니다. 게시판에서 삭제된 게시글과 댓글이 표시됩니다.
-          </div>
+        ) : (
+          <div className="admin-empty">로딩 중...</div>
         )}
       </div>
     </div>
@@ -520,7 +523,8 @@ import { useNetwork } from '../contexts/NetworkContext.jsx';
 const ADMIN_TABS = [
   { id: "history", label: "📋 수정 이력" },
   { id: "push", label: "📣 푸시 알림" },
-  { id: "trace", label: "🔍 작성자 추적" }
+  { id: "trace", label: "🔍 작성자 추적" },
+  { id: "deleted", label: "🗑️ 삭제 로그" }
 ];
 
 export default function AdminPage() {
@@ -558,7 +562,6 @@ export default function AdminPage() {
             
             {isMod && (
               <>
-                <DeletedItemsToggle />
                 <div style={{ marginTop: '24px', textAlign: 'center' }}>
                   <button 
                     className="admin-btn admin-btn--primary" 
@@ -597,6 +600,7 @@ export default function AdminPage() {
             {activeAdminTab === "history" && <CommentHistoryTab />}
             {activeAdminTab === "push" && <PushNotificationTab />}
             {activeAdminTab === "trace" && <TraceAuthorTab />}
+            {activeAdminTab === "deleted" && <DeletedLogsTab />}
           </>
         )}
       </main>

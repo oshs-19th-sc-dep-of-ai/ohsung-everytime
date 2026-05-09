@@ -43,7 +43,6 @@ export function PostListPage() {
     const [sortOrder, setSortOrder] = useState(() => sessionStorage.getItem('board_sort') || 'latest');
 
     const isAdmin = localStorage.getItem("eta_admin") === "true";
-    const showDeleted = isAdmin && localStorage.getItem("show_deleted") === "true";
 
     // 상태 변경 시 sessionStorage에 저장
     useEffect(() => {
@@ -55,7 +54,6 @@ export function PostListPage() {
     // 🌟 API 연동 및 오프라인 캐시
     const fetchPosts = async () => {
         const params = { page: 1, limit: 100 };
-        if (showDeleted) params.include_deleted = 'true';
         const response = await axios.get(`${API_BASE_URL}/posts`, {
             params,
             withCredentials: true
@@ -76,7 +74,7 @@ export function PostListPage() {
         return [];
     };
 
-    const { data: cachedPosts, isStale } = useOfflineData(`board_posts_${showDeleted}`, fetchPosts, { store: 'posts' });
+    const { data: cachedPosts, isStale } = useOfflineData('board_posts_false', fetchPosts, { store: 'posts' });
 
     useEffect(() => {
         if (cachedPosts) {

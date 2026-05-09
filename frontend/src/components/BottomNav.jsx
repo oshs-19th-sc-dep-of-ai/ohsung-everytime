@@ -18,6 +18,16 @@ const BoardIcon = () => (
     </svg>
 );
 
+const TimetableIcon = () => (
+    <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" />
+        <path d="M9 3v18" />
+        <path d="M15 3v18" />
+        <path d="M3 9h18" />
+        <path d="M3 15h18" />
+    </svg>
+);
+
 const WriteIcon = () => (
     <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 5V19M5 12H19" />
@@ -45,6 +55,7 @@ const SettingsIcon = () => (
 const NAV_ITEMS = [
     { id: 'home',  label: '홈',    path: '/',         icon: HomeIcon,     isWrite: false },
     { id: 'board', label: '게시판', path: '/board',    icon: BoardIcon,    isWrite: false },
+    { id: 'timetable', label: '시간표', path: '/timetable', icon: TimetableIcon, isWrite: false },
     { id: 'write', label: '글쓰기', path: '/postWrite', icon: WriteIcon, isWrite: true  },
     { id: 'meal',  label: '급식',   path: '/meal',     icon: MealIcon,     isWrite: false },
     { id: 'admin', label: '설정',   path: '/admin',    icon: SettingsIcon, isWrite: false },
