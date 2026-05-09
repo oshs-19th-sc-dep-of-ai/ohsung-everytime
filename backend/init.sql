@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS Posts (
     content TEXT NOT NULL,
     is_anonymous BOOLEAN DEFAULT FALSE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    is_deleted BOOLEAN DEFAULT FALSE,
     FOREIGN KEY (author_id) REFERENCES Students (student_id) ON DELETE CASCADE
 );
 

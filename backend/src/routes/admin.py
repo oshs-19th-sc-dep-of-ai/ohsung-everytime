@@ -19,12 +19,15 @@ def admin_delete_post(post_id):
     db = DatabaseManager()
     
     # 게시물 존재 여부 확인
-    post = db.query("SELECT post_id FROM Posts WHERE post_id = %(post_id)s", post_id=post_id).result
+    post = db.query("SELECT post_id, is_deleted FROM Posts WHERE post_id = %(post_id)s", post_id=post_id).result
     if not post:
         return jsonify({"status": "error", "message": "게시물을 찾을 수 없습니다."}), 404
 
-    # 강제 삭제 (Cascade 적용되어 댓글, 좋아요 모두 삭제됨)
-    db.query("DELETE FROM Posts WHERE post_id = %(post_id)s", post_id=post_id)
+    if post[0][1]:
+        return jsonify({"status": "error", "message": "이미 삭제된 게시물입니다."}), 400
+
+    # 논리적 삭제 (is_deleted = TRUE)
+    db.query("UPDATE Posts SET is_deleted = TRUE WHERE post_id = %(post_id)s", post_id=post_id)
     db.commit()
 
     return jsonify({"status": "success", "message": "게시물이 강제로 삭제되었습니다."})
@@ -38,12 +41,15 @@ def admin_delete_comment(comment_id):
     db = DatabaseManager()
 
     # 댓글 존재 여부 확인
-    comment = db.query("SELECT comment_id FROM Comments WHERE comment_id = %(comment_id)s", comment_id=comment_id).result
+    comment = db.query("SELECT comment_id, is_deleted FROM Comments WHERE comment_id = %(comment_id)s", comment_id=comment_id).result
     if not comment:
         return jsonify({"status": "error", "message": "댓글을 찾을 수 없습니다."}), 404
 
-    # DB에서 강제 삭제 (대댓글 및 좋아요 cascade 삭제됨)
-    db.query("DELETE FROM Comments WHERE comment_id = %(comment_id)s", comment_id=comment_id)
+    if comment[0][1]:
+        return jsonify({"status": "error", "message": "이미 삭제된 댓글입니다."}), 400
+
+    # 논리적 삭제 (is_deleted = TRUE)
+    db.query("UPDATE Comments SET is_deleted = TRUE WHERE comment_id = %(comment_id)s", comment_id=comment_id)
     db.commit()
 
     return jsonify({"status": "success", "message": "댓글이 강제로 삭제되었습니다."})

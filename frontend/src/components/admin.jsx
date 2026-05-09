@@ -453,6 +453,67 @@ function ChangePasswordTab() {
   );
 }
 
+// 삭제된 항목 보기 토글
+function DeletedItemsToggle() {
+  const [showDeleted, setShowDeleted] = useState(() => {
+    return localStorage.getItem("show_deleted") === "true";
+  });
+
+  const handleToggle = () => {
+    const newValue = !showDeleted;
+    setShowDeleted(newValue);
+    localStorage.setItem("show_deleted", newValue.toString());
+  };
+
+  return (
+    <div style={{ marginTop: '24px' }}>
+      <p className="admin-section-title">관리자 설정</p>
+      <div className="admin-card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <div style={{ fontWeight: '600', fontSize: '15px', marginBottom: '4px' }}>🗑️ 삭제된 항목 보기</div>
+            <div style={{ fontSize: '13px', color: '#888' }}>게시글, 댓글에서 논리적으로 삭제된 항목을 확인합니다</div>
+          </div>
+          <button
+            onClick={handleToggle}
+            className="admin-deleted-toggle-btn"
+            style={{
+              width: '52px',
+              height: '28px',
+              borderRadius: '14px',
+              border: 'none',
+              cursor: 'pointer',
+              position: 'relative',
+              transition: 'background-color 0.3s',
+              backgroundColor: showDeleted ? '#ff4d4f' : '#ccc',
+              flexShrink: 0,
+            }}
+          >
+            <span
+              style={{
+                position: 'absolute',
+                top: '3px',
+                left: showDeleted ? '26px' : '3px',
+                width: '22px',
+                height: '22px',
+                borderRadius: '50%',
+                backgroundColor: '#fff',
+                transition: 'left 0.3s',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+              }}
+            />
+          </button>
+        </div>
+        {showDeleted && (
+          <div style={{ marginTop: '12px', padding: '10px', background: '#fff5f5', borderRadius: '6px', fontSize: '13px', color: '#c62828', fontWeight: '500' }}>
+            ⚠️ 삭제된 항목 보기가 활성화되었습니다. 게시판에서 삭제된 게시글과 댓글이 표시됩니다.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 import { useNetwork } from '../contexts/NetworkContext.jsx';
 
 // 메인 AdminPage (설정 페이지)
@@ -496,15 +557,18 @@ export default function AdminPage() {
             <ChangePasswordTab />
             
             {isMod && (
-              <div style={{ marginTop: '24px', textAlign: 'center' }}>
-                <button 
-                  className="admin-btn admin-btn--primary" 
-                  style={{ width: '100%', backgroundColor: '#333' }}
-                  onClick={() => setShowAdminPanel(true)}
-                >
-                  ⚙️ 어드민 패널 접속
-                </button>
-              </div>
+              <>
+                <DeletedItemsToggle />
+                <div style={{ marginTop: '24px', textAlign: 'center' }}>
+                  <button 
+                    className="admin-btn admin-btn--primary" 
+                    style={{ width: '100%', backgroundColor: '#333' }}
+                    onClick={() => setShowAdminPanel(true)}
+                  >
+                    ⚙️ 어드민 패널 접속
+                  </button>
+                </div>
+              </>
             )}
           </>
         ) : (
