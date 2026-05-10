@@ -33,6 +33,15 @@ def _send_meal_notification(meal_type, title, icon):
         print("[Scheduler] 등록된 FCM 토큰이 없습니다.")
         return
 
+    # 알림 내역 저장 (전체 사용자 대상)
+    db.query(
+        """
+        INSERT INTO push_notifications (user_id, title, body, icon, link, created_at)
+        VALUES (NULL, %(title)s, %(body)s, %(icon)s, %(link)s, NOW())
+        """,
+        title=title, body=body, icon=icon, link='https://square.coshsc.kr/meal'
+    )
+
     batch_size = 500
     for i in range(0, len(tokens), batch_size):
         batch_tokens = tokens[i:i + batch_size]

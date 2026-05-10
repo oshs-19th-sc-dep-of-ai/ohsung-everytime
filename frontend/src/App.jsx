@@ -9,6 +9,7 @@ import { MainPage } from "./components/MainPage";
 import { Header } from "./components/Header.jsx";
 import { PostListPage } from "./components/PostListPage.jsx";
 import { PostDetailPage } from "./components/PostDetailPage";
+import { NotificationPage } from "./components/NotificationPage.jsx";
 import MealPage from "./components/meal.jsx";
 import { Timetable } from "./components/Timetable.jsx"; // 시간표 컴포넌트 추가
 import { PostWritePage } from "./components/PostWritePage.jsx";
@@ -46,15 +47,16 @@ function PublicRoute({ children }) {
 
 // 탭 순서를 정의하여 전환 방향(왼쪽/오른쪽) 결정
 // 시간표(/timetable)를 급식과 관리자 사이에 배치
-const TAB_ORDER = ['/', '/board', '/postWrite', '/meal', '/timetable', '/admin'];
+const TAB_ORDER = ['/', '/board', '/postWrite', '/meal', '/notifications', '/timetable', '/admin'];
 
 const getTabIndex = (pathname) => {
     if (pathname === '/') return 0;
     if (pathname.startsWith('/board') || pathname.startsWith('/post/')) return 1;
     if (pathname.startsWith('/postWrite')) return 2;
     if (pathname.startsWith('/meal')) return 3;
-    if (pathname.startsWith('/timetable')) return 4; // 시간표 인덱스 추가
-    if (pathname.startsWith('/admin')) return 5;
+    if (pathname.startsWith('/notifications')) return 4;
+    if (pathname.startsWith('/timetable')) return 5;
+    if (pathname.startsWith('/admin')) return 6;
     return -1;
 };
 
@@ -159,6 +161,15 @@ function AnimatedRoutes() {
                     element={
                         <ProtectedRoute>
                             <PageWrapper direction={direction}><MealPage /></PageWrapper>
+                        </ProtectedRoute>
+                    }
+                />
+
+                <Route
+                    path="/notifications"
+                    element={
+                        <ProtectedRoute>
+                            <PageWrapper direction={direction}><NotificationPage /></PageWrapper>
                         </ProtectedRoute>
                     }
                 />
