@@ -111,12 +111,29 @@ def admin_push_notification():
         if target_user_id:
             # 특정 사용자 대상
             tokens = db.query("SELECT token FROM fcm_tokens WHERE user_id = %(user_id)s", user_id=target_user_id).result
+            db.query(
+                """
+                INSERT INTO push_notifications (user_id, title, body, icon, created_at)
+                VALUES (%(user_id)s, %(title)s, %(body)s, %(icon)s, NOW())
+                """,
+                user_id=target_user_id, title=title, body=body, icon='/icon_notification.svg'
+            )
         else:
             # 전체 사용자 대상
             tokens = db.query("SELECT token FROM fcm_tokens").result
+            db.query(
+                """
+                INSERT INTO push_notifications (user_id, title, body, icon, created_at)
+                SELECT DISTINCT user_id, %(title)s, %(body)s, %(icon)s, NOW()
+                FROM fcm_tokens
+                """,
+                title=title, body=body, icon='/icon_notification.svg'
+            )
+
+        db.commit()
 
         if not tokens:
-            return jsonify({"status": "success", "message": "전송할 FCM 디바이스 토큰이 없습니다."})
+            return jsonify({"status": "success", "message": "전송할 FCM 디바이스 토큰이 없으나, 내역은 저장되었습니다."})
 
         # 토큰 리스트 추출
         token_list = [t[0] for t in tokens]

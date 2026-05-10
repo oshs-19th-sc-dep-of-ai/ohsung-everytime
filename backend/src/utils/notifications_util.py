@@ -31,14 +31,25 @@ def send_push_notification(user_id, title, body, data=None, icon=None, link=None
         return False
     
     # 알림 내역 저장
-    db.query(
-        """
-        INSERT INTO push_notifications (user_id, title, body, data, icon, link, created_at)
-        VALUES (%(user_id)s, %(title)s, %(body)s, %(data)s, %(icon)s, %(link)s, NOW())
-        """,
-        user_id=user_id, title=title, body=body, data=str(data) if data else None,
-        icon=icon, link=link
-    )
+    if user_id:
+        db.query(
+            """
+            INSERT INTO push_notifications (user_id, title, body, data, icon, link, created_at)
+            VALUES (%(user_id)s, %(title)s, %(body)s, %(data)s, %(icon)s, %(link)s, NOW())
+            """,
+            user_id=user_id, title=title, body=body, data=str(data) if data else None,
+            icon=icon, link=link
+        )
+    else:
+        db.query(
+            """
+            INSERT INTO push_notifications (user_id, title, body, data, icon, link, created_at)
+            SELECT DISTINCT user_id, %(title)s, %(body)s, %(data)s, %(icon)s, %(link)s, NOW()
+            FROM fcm_tokens
+            """,
+            title=title, body=body, data=str(data) if data else None,
+            icon=icon, link=link
+        )
     
     # 배치 전송 (최대 500개씩)
     batch_size = 500

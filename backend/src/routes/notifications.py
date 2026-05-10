@@ -75,11 +75,6 @@ def unregister_token():
 
     return jsonify({"message": "FCM 토큰이 해제되었습니다."}), 200
 
-<<<<<<< HEAD
-@notifications_bp.route("/meal-notification", methods=["GET"])
-def get_meal_notification():
-    """급식 알림 설정 상태를 조회합니다."""
-=======
 
 @notifications_bp.route("/history", methods=["GET"])
 def get_notification_history():
@@ -161,26 +156,12 @@ def mark_notification_read(notification_id):
         401: 로그인 필요
         404: 알림을 찾을 수 없음
     """
->>>>>>> 6dcc9065445302ff57388df749a1db66421f71fb
     user_id = session.get("student_id")
     if not user_id:
         return jsonify({"error": "로그인이 필요합니다."}), 401
 
     db = DatabaseManager()
     result = db.query(
-<<<<<<< HEAD
-        "SELECT meal_noti_enabled FROM Students WHERE student_id = %(user_id)s",
-        user_id=user_id
-    ).result
-    
-    # 기본값을 TRUE로 설정 (DB에 없는 경우 포함)
-    enabled = bool(result[0][0]) if result else True
-    return jsonify({"meal_noti_enabled": enabled}), 200
-
-@notifications_bp.route("/meal-notification", methods=["POST"])
-def toggle_meal_notification():
-    """급식 알림 설정을 변경합니다."""
-=======
         "UPDATE push_notifications SET is_read = TRUE WHERE notification_id = %(notification_id)s AND user_id = %(user_id)s",
         notification_id=notification_id, user_id=user_id
     )
@@ -201,34 +182,17 @@ def mark_all_notifications_read():
         200: 전체 읽음 처리 성공
         401: 로그인 필요
     """
->>>>>>> 6dcc9065445302ff57388df749a1db66421f71fb
     user_id = session.get("student_id")
     if not user_id:
         return jsonify({"error": "로그인이 필요합니다."}), 401
 
-<<<<<<< HEAD
-    data = request.get_json(silent=True) or {}
-    if "enabled" not in data:
-        return jsonify({"error": "enabled 필드가 필요합니다."}), 400
-        
-    enabled = bool(data["enabled"])
-
-    db = DatabaseManager()
-    db.query(
-        "UPDATE Students SET meal_noti_enabled = %(enabled)s WHERE student_id = %(user_id)s",
-        enabled=enabled,
-=======
     db = DatabaseManager()
     db.query(
         "UPDATE push_notifications SET is_read = TRUE WHERE user_id = %(user_id)s AND is_read = FALSE",
->>>>>>> 6dcc9065445302ff57388df749a1db66421f71fb
         user_id=user_id
     )
     db.commit()
 
-<<<<<<< HEAD
-    return jsonify({"message": "급식 알림 설정이 변경되었습니다.", "meal_noti_enabled": enabled}), 200
-=======
     return jsonify({"message": "모든 알림을 읽음 처리했습니다."}), 200
 
 
@@ -252,4 +216,43 @@ def get_unread_count():
     ).result[0][0]
 
     return jsonify({"status": "success", "data": {"unread_count": count}}), 200
->>>>>>> 6dcc9065445302ff57388df749a1db66421f71fb
+
+@notifications_bp.route("/meal-notification", methods=["GET"])
+def get_meal_notification():
+    """급식 알림 설정 상태를 조회합니다."""
+    user_id = session.get("student_id")
+    if not user_id:
+        return jsonify({"error": "로그인이 필요합니다."}), 401
+
+    db = DatabaseManager()
+    result = db.query(
+        "SELECT meal_noti_enabled FROM Students WHERE student_id = %(user_id)s",
+        user_id=user_id
+    ).result
+    
+    # 기본값을 TRUE로 설정 (DB에 없는 경우 포함)
+    enabled = bool(result[0][0]) if result else True
+    return jsonify({"meal_noti_enabled": enabled}), 200
+
+@notifications_bp.route("/meal-notification", methods=["POST"])
+def toggle_meal_notification():
+    """급식 알림 설정을 변경합니다."""
+    user_id = session.get("student_id")
+    if not user_id:
+        return jsonify({"error": "로그인이 필요합니다."}), 401
+
+    data = request.get_json(silent=True) or {}
+    if "enabled" not in data:
+        return jsonify({"error": "enabled 필드가 필요합니다."}), 400
+        
+    enabled = bool(data["enabled"])
+
+    db = DatabaseManager()
+    db.query(
+        "UPDATE Students SET meal_noti_enabled = %(enabled)s WHERE student_id = %(user_id)s",
+        enabled=enabled,
+        user_id=user_id
+    )
+    db.commit()
+
+    return jsonify({"message": "급식 알림 설정이 변경되었습니다.", "meal_noti_enabled": enabled}), 200
