@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useToast } from "../contexts/ToastContext.jsx";
+import { motion } from "framer-motion";
 import "./admin.css";
 import { API_BASE_URL } from "../config";
 
@@ -517,6 +519,91 @@ function DeletedLogsTab() {
   );
 }
 
+// 탭 6: 알림 설정
+function MealNotificationSettingTab() {
+  const [notiEnabled, setNotiEnabled] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const { showToast } = useToast();
+
+  useEffect(() => {
+    const fetchNotiStatus = async () => {
+      try {
+        const data = await apiFetch("/notifications/meal-notification");
+        setNotiEnabled(data.meal_noti_enabled);
+      } catch (error) {
+        console.error("알림 설정 상태를 가져오는데 실패했습니다.", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchNotiStatus();
+  }, []);
+
+  const toggleNoti = async () => {
+    setLoading(true);
+    try {
+      const newVal = !notiEnabled;
+      await apiFetch("/notifications/meal-notification", {
+        method: "POST",
+        body: JSON.stringify({ enabled: newVal }),
+      });
+      setNotiEnabled(newVal);
+      showToast(`급식 알림이 ${newVal ? '켜졌' : '꺼졌'}습니다.`);
+    } catch (error) {
+      console.error("알림 설정 변경 실패", error);
+      showToast("알림 설정 변경에 실패했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ marginTop: '24px' }}>
+      <p className="admin-section-title">알림 설정</p>
+      <div className="admin-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <div style={{ fontWeight: 'bold', fontSize: '15px' }}>급식 알림</div>
+          <div style={{ fontSize: '13px', color: '#666', marginTop: '4px' }}>점심(11:30)과 저녁(15:30) 식단 알림을 받습니다.</div>
+        </div>
+        <button
+          onClick={toggleNoti}
+          disabled={loading}
+          style={{
+            position: 'relative',
+            width: '52px',
+            height: '28px',
+            borderRadius: '16px',
+            backgroundColor: notiEnabled ? '#6c63ff' : '#e0e0e0',
+            border: 'none',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            opacity: loading ? 0.7 : 1,
+            display: 'flex',
+            alignItems: 'center',
+            padding: '4px',
+            transition: 'background-color 0.3s ease',
+            outline: 'none',
+            flexShrink: 0
+          }}
+        >
+          <motion.div
+            layout
+            initial={false}
+            animate={{ x: notiEnabled ? 24 : 0 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+            style={{
+              width: '20px',
+              height: '20px',
+              borderRadius: '50%',
+              backgroundColor: '#fff',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+            }}
+          />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 import { useNetwork } from '../contexts/NetworkContext.jsx';
 
 // 메인 AdminPage (설정 페이지)
@@ -559,6 +646,7 @@ export default function AdminPage() {
         {!showAdminPanel ? (
           <>
             <ChangePasswordTab />
+            <MealNotificationSettingTab />
             
             {isMod && (
               <>

@@ -21,7 +21,12 @@ def _send_meal_notification(meal_type, title, icon):
     body = f"오늘의 {meal_type} 메뉴:\n{menu_text}"
 
     db = DatabaseManager()
-    tokens_data = db.query("SELECT DISTINCT token FROM fcm_tokens").result
+    tokens_data = db.query("""
+        SELECT DISTINCT t.token 
+        FROM fcm_tokens t
+        JOIN Students s ON t.user_id = s.student_id
+        WHERE s.meal_noti_enabled = TRUE
+    """).result
     tokens = [t[0] for t in tokens_data] if tokens_data else []
 
     if not tokens:

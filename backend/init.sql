@@ -9,7 +9,8 @@ CREATE TABLE IF NOT EXISTS Students (
     student_pw CHAR(64) NOT NULL,
     rent_admin BOOLEAN DEFAULT FALSE,
     eta_admin BOOLEAN DEFAULT FALSE,
-    grade INT NOT NULL
+    grade INT NOT NULL,
+    meal_noti_enabled BOOLEAN DEFAULT TRUE
 );
 
 -- 댓글 테이블 (Comments)
