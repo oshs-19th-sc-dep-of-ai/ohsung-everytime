@@ -44,7 +44,7 @@ def login():
         session['session_student_id'] = student_id  # 다른 라우트 호환용
         session['rent_admin'] = bool(rent_admin)
         session['eta_admin'] = bool(eta_admin)
-        session['grade'] = grade # 학년 게시판 용도ㅉ
+        session['grade'] = grade # 학년 게시판 용도
 
         if eta_admin:
             # 모더레이터 키 명시적 설정 (이제 rent_admin만으로는 설정되지 않음)

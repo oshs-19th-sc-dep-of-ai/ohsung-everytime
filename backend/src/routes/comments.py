@@ -8,6 +8,11 @@ comments_bp = Blueprint('comments', __name__)
 def get_comments(post_id):
     db = DatabaseManager()
     
+    # 관리자가 삭제된 항목을 볼 수 있는지 여부
+    include_deleted = request.args.get('include_deleted', 'false').lower() == 'true'
+    is_admin = session.get('eta_admin') is True
+    show_deleted = include_deleted and is_admin
+    
     # 해당 게시글의 모든 댓글 조회 (작성자 정보 포함)
     # 삭제된 댓글이라도 대댓글이 있으면 "삭제된 댓글입니다"로 표시하기 위해 조회는 해옴
     # 혹은 프론트에서 처리. 여기서는 is_deleted 플래그를 그대로 전달.
@@ -41,6 +46,11 @@ def get_comments(post_id):
         c_id = row[0]
         is_anon = bool(row[4])
         is_del = bool(row[6])
+        
+        # 일반 유저일 경우 삭제된 댓글은 완전히 제외
+        if not show_deleted and is_del:
+            continue
+            
         real_author_id = row[8]
         author_name = "익명" if is_anon else row[7]
         
@@ -53,7 +63,8 @@ def get_comments(post_id):
         
         comment_obj = {
             "comment_id": c_id,
-            "content": "삭제된 댓글입니다." if is_del else row[2],
+            "content": row[2],
+            "original_content": row[2] if (show_deleted and is_del) else None,
             "parent_id": row[3],
             "is_anonymous": is_anon,
             "created_at": row[5], 
@@ -85,6 +96,32 @@ def get_comments(post_id):
         "message": "Comments retrieved successfully",
         "data": root_comments
     })
+
+# 댓글 삭제 (본인 댓글 논리적 삭제)
+@comments_bp.route('/comments/<int:comment_id>', methods=['DELETE'])
+def delete_comment(comment_id):
+    if 'student_id' not in session:
+        return jsonify({"status": "error", "message": "로그인이 필요합니다."}), 401
+
+    student_id = session['student_id']
+    db = DatabaseManager()
+
+    # 댓글 존재 여부 및 작성자 확인
+    comment = db.query("SELECT author_id, is_deleted FROM Comments WHERE comment_id = %(comment_id)s", comment_id=comment_id).result
+    if not comment:
+        return jsonify({"status": "error", "message": "댓글을 찾을 수 없습니다."}), 404
+
+    if comment[0][1]:
+        return jsonify({"status": "error", "message": "이미 삭제된 댓글입니다."}), 400
+
+    if comment[0][0] != student_id:
+        return jsonify({"status": "error", "message": "본인의 댓글만 삭제할 수 있습니다."}), 403
+
+    # 논리적 삭제 (is_deleted = TRUE)
+    db.query("UPDATE Comments SET is_deleted = TRUE WHERE comment_id = %(comment_id)s", comment_id=comment_id)
+    db.commit()
+
+    return jsonify({"status": "success", "message": "댓글이 삭제되었습니다."})
 
 # 댓글 작성
 @comments_bp.route('/posts/<int:post_id>/comments', methods=['POST'])

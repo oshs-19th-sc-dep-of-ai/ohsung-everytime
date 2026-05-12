@@ -91,6 +91,8 @@ export function PostDetailPage() {
                 likes: p.likes_count || 0,
                 is_liked: p.is_liked || false,
                 is_anonymous: p.is_anonymous,
+                is_mine: p.is_mine || false,
+                is_deleted: p.is_deleted || false,
             };
         }
         
@@ -101,7 +103,7 @@ export function PostDetailPage() {
         return { post: pData, comments: cData };
     };
 
-    const { data: cachedDetails, isStale, loading: isCachedLoading, error: cachedError, refetch } = useOfflineData(`post_${postId}`, fetchPostDetails, { store: 'postDetails' });
+    const { data: cachedDetails, isStale, loading: isCachedLoading, error: cachedError, refetch } = useOfflineData(`post_${postId}_false`, fetchPostDetails, { store: 'postDetails' });
 
     useEffect(() => {
         if (cachedDetails) {
@@ -278,6 +280,32 @@ export function PostDetailPage() {
         }
     };
 
+    const handlePostDelete = async () => {
+        const confirmDelete = window.confirm("이 게시글을 정말로 삭제하시겠습니까?");
+        if (!confirmDelete) return;
+
+        try {
+            await axios.delete(`${API_BASE_URL}/posts/${postId}`, { withCredentials: true });
+            showToast("게시글이 삭제되었습니다.");
+            navigate(-1);
+        } catch (err) {
+            showToast(err.response?.data?.message || "게시글 삭제에 실패했습니다.");
+        }
+    };
+
+    const handleCommentDelete = async (commentId) => {
+        const confirmDelete = window.confirm("이 댓글을 정말로 삭제하시겠습니까?");
+        if (!confirmDelete) return;
+
+        try {
+            await axios.delete(`${API_BASE_URL}/comments/${commentId}`, { withCredentials: true });
+            showToast("댓글이 삭제되었습니다.");
+            refetch();
+        } catch (err) {
+            showToast(err.response?.data?.message || "댓글 삭제에 실패했습니다.");
+        }
+    };
+
     const handleTracePostAuthor = async () => {
         try {
             const res = await axios.get(`${API_BASE_URL}/admin/trace/posts/${postId}`, { withCredentials: true });
@@ -396,8 +424,9 @@ export function PostDetailPage() {
     };
 
     const renderCommentItem = (comment, isPopularBadge = false) => {
+        const isDeleted = comment.is_deleted;
         return (
-            <div key={`comment-${comment.comment_id}`} className={`comment-item ${isPopularBadge ? 'popular-highlight' : ''}`}>
+            <div key={`comment-${comment.comment_id}`} className={`comment-item ${isPopularBadge ? 'popular-highlight' : ''} ${isDeleted ? 'deleted-item' : ''}`}>
                 <div className="comment-header" style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <div>
                         {isPopularBadge && <span className="best-badge">🔥 베스트</span>}
@@ -420,17 +449,31 @@ export function PostDetailPage() {
                             )}
                         </span>
                         <span className="comment-date">{comment.created_at}</span>
+                        {isDeleted && <span className="deleted-badge">삭제됨</span>}
                     </div>
 
-                    {isAdmin && (
-                        <button
-                            type="button"
-                            onClick={() => handleAdminCommentDelete(comment.comment_id)}
-                            style={{ background: 'none', border: 'none', color: '#ff4d4f', cursor: 'pointer', fontSize: '12px' }}
-                        >
-                            강제 삭제
-                        </button>
-                    )}
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        {/* 본인 댓글 삭제 버튼 */}
+                        {comment.is_mine && !isDeleted && (
+                            <button
+                                type="button"
+                                onClick={() => handleCommentDelete(comment.comment_id)}
+                                style={{ background: 'none', border: 'none', color: '#999', cursor: 'pointer', fontSize: '12px' }}
+                            >
+                                삭제
+                            </button>
+                        )}
+                        {/* 관리자 강제 삭제 버튼 */}
+                        {isAdmin && !isDeleted && (
+                            <button
+                                type="button"
+                                onClick={() => handleAdminCommentDelete(comment.comment_id)}
+                                style={{ background: 'none', border: 'none', color: '#ff4d4f', cursor: 'pointer', fontSize: '12px' }}
+                            >
+                                강제 삭제
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 <div className="comment-body">
@@ -438,26 +481,28 @@ export function PostDetailPage() {
                 </div>
 
 
-                <div className="comment-actions" style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '10px' }}>
-                    <button
-                        type="button"
-                        className={`comment-like ${comment.is_liked ? 'liked' : ''}`}
-                        onClick={() => handleCommentLike(comment.comment_id)}
-                    >
-                        ❤️ {comment.likes_count || 0}
-                    </button>
-
-                    {/* 원댓글인 경우에만 답글 버튼 표시 (대댓글의 대댓글 제한) */}
-                    {!comment.parent_id && !isPopularBadge && (
+                {!isDeleted && (
+                    <div className="comment-actions" style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '10px' }}>
                         <button
                             type="button"
-                            onClick={() => setReplyingTo(comment.comment_id)}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#666', padding: '0' }}
+                            className={`comment-like ${comment.is_liked ? 'liked' : ''}`}
+                            onClick={() => handleCommentLike(comment.comment_id)}
                         >
-                            ↳ 답글 달기
+                            ❤️ {comment.likes_count || 0}
                         </button>
-                    )}
-                </div>
+
+                        {/* 원댓글인 경우에만 답글 버튼 표시 (대댓글의 대댓글 제한) */}
+                        {!comment.parent_id && !isPopularBadge && (
+                            <button
+                                type="button"
+                                onClick={() => setReplyingTo(comment.comment_id)}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#666', padding: '0' }}
+                            >
+                                ↳ 답글 달기
+                            </button>
+                        )}
+                    </div>
+                )}
             </div>
         );
     };
@@ -533,7 +578,8 @@ export function PostDetailPage() {
                 <>
                     {/* 게시글 영역 */}
                     <div className="post-card">
-                        <h2 className="post-title">
+                        <h2 className={`post-title ${post.is_deleted ? 'deleted-post-title' : ''}`}>
+                            {post.is_deleted && <span className="deleted-badge">삭제됨</span>}
                             {post.title}
                             {isStale && <span className="stale-badge" style={{ fontSize: '11px', color: '#666', background: '#eee', padding: '2px 6px', borderRadius: '4px', verticalAlign: 'middle', marginLeft: '8px' }}>오프라인 데이터</span>}
                         </h2>
@@ -573,7 +619,18 @@ export function PostDetailPage() {
                                 {post.is_liked ? '❤️' : '🤍'} 공감 {post.likes}
                             </button>
 
-                            {isAdmin && (
+                            {/* 본인 게시글 삭제 버튼 */}
+                            {post.is_mine && !post.is_deleted && (
+                                <button
+                                    type="button"
+                                    onClick={handlePostDelete}
+                                    style={{ background: '#f5f5f5', color: '#666', border: '1px solid #ddd', borderRadius: '20px', padding: '0 16px', cursor: 'pointer', fontSize: '14px', fontWeight: '600' }}
+                                >
+                                    🗑️ 삭제
+                                </button>
+                            )}
+
+                            {isAdmin && !post.is_deleted && (
                                 <button
                                     type="button"
                                     onClick={handleAdminPostDelete}

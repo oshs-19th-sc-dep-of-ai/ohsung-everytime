@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useToast } from "../contexts/ToastContext.jsx";
+import { motion } from "framer-motion";
 import "./admin.css";
 import { API_BASE_URL } from "../config";
 
@@ -453,13 +455,163 @@ function ChangePasswordTab() {
   );
 }
 
+// 탭 5: 삭제 로그
+function DeletedLogsTab() {
+  const [logs, setLogs] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const fetchLogs = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const data = await apiFetch("/admin/deleted-logs");
+      setLogs(data.data);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 탭 열릴 때 자동 조회
+  useEffect(() => {
+    fetchLogs();
+  }, []);
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <p className="admin-section-title" style={{ margin: 0 }}>삭제 로그</p>
+        <LoadingBtn loading={loading} onClick={fetchLogs} className="admin-btn--primary" style={{ padding: '6px 12px', fontSize: '13px' }}>
+          새로고침
+        </LoadingBtn>
+      </div>
+      <div className="admin-card" style={{ marginTop: '12px' }}>
+        {error && <div className="admin-result admin-result--error">⚠️ {error}</div>}
+        
+        {logs !== null && logs.length === 0 ? (
+          <div className="admin-empty">삭제된 항목이 없습니다.</div>
+        ) : logs !== null ? (
+          <div className="admin-history-list">
+            {logs.map((log, i) => (
+              <div key={i} className="admin-history-item" style={{ borderLeft: log.type === 'post' ? '3px solid #2196f3' : '3px solid #4caf50', paddingLeft: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <span style={{ fontWeight: 'bold', color: log.type === 'post' ? '#1976d2' : '#388e3c', fontSize: '13px' }}>
+                    {log.type === 'post' ? '게시물' : '댓글'} (ID: {log.id})
+                  </span>
+                  <span className="admin-history-item__time">🕐 {log.created_at}</span>
+                </div>
+                <div style={{ fontSize: '14px', marginBottom: '8px', wordBreak: 'break-all' }}>
+                  {log.title || log.content}
+                </div>
+                <div style={{ fontSize: '12px', color: '#666' }}>
+                  작성자: {log.author} {log.post_id && `(원본 게시물 ID: ${log.post_id})`}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="admin-empty">로딩 중...</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// 탭 6: 알림 설정
+function MealNotificationSettingTab() {
+  const [notiEnabled, setNotiEnabled] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const { showToast } = useToast();
+
+  useEffect(() => {
+    const fetchNotiStatus = async () => {
+      try {
+        const data = await apiFetch("/notifications/meal-notification");
+        setNotiEnabled(data.meal_noti_enabled);
+      } catch (error) {
+        console.error("알림 설정 상태를 가져오는데 실패했습니다.", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchNotiStatus();
+  }, []);
+
+  const toggleNoti = async () => {
+    setLoading(true);
+    try {
+      const newVal = !notiEnabled;
+      await apiFetch("/notifications/meal-notification", {
+        method: "POST",
+        body: JSON.stringify({ enabled: newVal }),
+      });
+      setNotiEnabled(newVal);
+      showToast(`급식 알림이 ${newVal ? '켜졌' : '꺼졌'}습니다.`);
+    } catch (error) {
+      console.error("알림 설정 변경 실패", error);
+      showToast("알림 설정 변경에 실패했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ marginTop: '24px' }}>
+      <p className="admin-section-title">알림 설정</p>
+      <div className="admin-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <div style={{ fontWeight: 'bold', fontSize: '15px' }}>급식 알림</div>
+          <div style={{ fontSize: '13px', color: '#666', marginTop: '4px' }}>점심(11:30)과 저녁(15:30) 식단 알림을 받습니다.</div>
+        </div>
+        <button
+          onClick={toggleNoti}
+          disabled={loading}
+          style={{
+            position: 'relative',
+            width: '52px',
+            height: '28px',
+            borderRadius: '16px',
+            backgroundColor: notiEnabled ? '#6c63ff' : '#e0e0e0',
+            border: 'none',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            opacity: loading ? 0.7 : 1,
+            display: 'flex',
+            alignItems: 'center',
+            padding: '4px',
+            transition: 'background-color 0.3s ease',
+            outline: 'none',
+            flexShrink: 0
+          }}
+        >
+          <motion.div
+            layout
+            initial={false}
+            animate={{ x: notiEnabled ? 24 : 0 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+            style={{
+              width: '20px',
+              height: '20px',
+              borderRadius: '50%',
+              backgroundColor: '#fff',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+            }}
+          />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 import { useNetwork } from '../contexts/NetworkContext.jsx';
 
 // 메인 AdminPage (설정 페이지)
 const ADMIN_TABS = [
   { id: "history", label: "📋 수정 이력" },
   { id: "push", label: "📣 푸시 알림" },
-  { id: "trace", label: "🔍 작성자 추적" }
+  { id: "trace", label: "🔍 작성자 추적" },
+  { id: "deleted", label: "🗑️ 삭제 로그" }
 ];
 
 export default function AdminPage() {
@@ -494,17 +646,20 @@ export default function AdminPage() {
         {!showAdminPanel ? (
           <>
             <ChangePasswordTab />
+            <MealNotificationSettingTab />
             
             {isMod && (
-              <div style={{ marginTop: '24px', textAlign: 'center' }}>
-                <button 
-                  className="admin-btn admin-btn--primary" 
-                  style={{ width: '100%', backgroundColor: '#333' }}
-                  onClick={() => setShowAdminPanel(true)}
-                >
-                  ⚙️ 어드민 패널 접속
-                </button>
-              </div>
+              <>
+                <div style={{ marginTop: '24px', textAlign: 'center' }}>
+                  <button 
+                    className="admin-btn admin-btn--primary" 
+                    style={{ width: '100%', backgroundColor: '#333' }}
+                    onClick={() => setShowAdminPanel(true)}
+                  >
+                    ⚙️ 어드민 패널 접속
+                  </button>
+                </div>
+              </>
             )}
           </>
         ) : (
@@ -533,6 +688,7 @@ export default function AdminPage() {
             {activeAdminTab === "history" && <CommentHistoryTab />}
             {activeAdminTab === "push" && <PushNotificationTab />}
             {activeAdminTab === "trace" && <TraceAuthorTab />}
+            {activeAdminTab === "deleted" && <DeletedLogsTab />}
           </>
         )}
       </main>

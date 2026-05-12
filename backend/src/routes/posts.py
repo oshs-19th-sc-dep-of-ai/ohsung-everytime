@@ -29,16 +29,21 @@ def get_posts():
     current_user = session.get('student_id', '')
     is_eta_admin = session.get('eta_admin') is True
 
+    # 관리자가 삭제된 항목을 볼 수 있는지 여부
+    include_deleted = request.args.get('include_deleted', 'false').lower() == 'true'
+    show_deleted = include_deleted and is_eta_admin
+    deleted_filter = "" if show_deleted else "AND p.is_deleted = FALSE"
+
     # 쿼리 조건 생성
-    where_clause = "WHERE p.board_type = %(board_type)s"
+    where_clause = f"WHERE p.board_type = %(board_type)s {deleted_filter}"
     
     if board_type == 'grade':
         if is_eta_admin:
-            where_clause = "WHERE p.board_type = 'grade'"
+            where_clause = f"WHERE p.board_type = 'grade' {deleted_filter}"
         else:
             if not current_user:
                 return jsonify({"status": "error", "message": "로그인이 필요합니다."}), 401
-            where_clause = """WHERE p.board_type = 'grade' 
+            where_clause = f"""WHERE p.board_type = 'grade' {deleted_filter} 
                               AND s.grade = (SELECT grade FROM Students WHERE student_id = %(current_user)s)"""
 
     # 전체 게시물 수
@@ -58,7 +63,8 @@ def get_posts():
             (SELECT COUNT(*) FROM Comments c WHERE c.post_id = p.post_id AND c.is_deleted = FALSE) AS comment_count,
             (SELECT COUNT(*) FROM PostLikes pl WHERE pl.post_id = p.post_id) AS likes_count,
             EXISTS(SELECT 1 FROM PostLikes pl WHERE pl.post_id = p.post_id AND pl.student_id = %(current_user)s) AS is_liked,
-            p.board_type
+            p.board_type,
+            p.is_deleted
         FROM Posts p
         JOIN Students s ON p.author_id = s.student_id
         {where_clause}
@@ -77,11 +83,16 @@ def get_posts():
         clean_content = re.sub(r'\[gif:.*?\]', '[GIF]', clean_content)
         # 3. 나머지 모든 HTML 태그를 공백으로 치환하여 제거
         clean_content = re.sub(r'<[^>]+>', ' ', clean_content)
+        # 3-1. &nbsp; 및 기타 특수문자 처리
+        import html
+        clean_content = html.unescape(clean_content)
+        clean_content = clean_content.replace('\xa0', ' ')
         # 4. 연속된 공백을 하나로 압축
         clean_content = re.sub(r'\s+', ' ', clean_content).strip()
         
         content_preview = clean_content[:100] + "…" if len(clean_content) > 100 else clean_content
         is_anon = bool(row[6])
+        is_del = bool(row[11])
 
         posts.append({
             "post_id":         row[0],
@@ -95,6 +106,7 @@ def get_posts():
             "likes_count":     row[8],
             "is_liked":        bool(row[9]),
             "board_type":      row[10],
+            "is_deleted":      is_del,
         })
 
     return jsonify({
@@ -118,7 +130,13 @@ def get_posts():
 def get_post(post_id):
     db = DatabaseManager()
 
-    sql = """
+    # 관리자가 삭제된 항목을 볼 수 있는지 여부
+    include_deleted = request.args.get('include_deleted', 'false').lower() == 'true'
+    is_admin = session.get('eta_admin') is True
+    show_deleted = include_deleted and is_admin
+
+    deleted_filter = "" if show_deleted else "AND p.is_deleted = FALSE"
+    sql = f"""
         SELECT
             p.post_id,
             p.title,
@@ -131,10 +149,11 @@ def get_post(post_id):
             (SELECT COUNT(*) FROM PostLikes pl WHERE pl.post_id = p.post_id) AS likes_count,
             EXISTS(SELECT 1 FROM PostLikes pl WHERE pl.post_id = p.post_id AND pl.student_id = %(current_user)s) AS is_liked,
             p.board_type,
-            s.grade
+            s.grade,
+            p.is_deleted
         FROM Posts p
         JOIN Students s ON p.author_id = s.student_id
-        WHERE p.post_id = %(post_id)s
+        WHERE p.post_id = %(post_id)s {deleted_filter}
     """
 
     current_user = session.get('student_id', '')
@@ -165,6 +184,7 @@ def get_post(post_id):
 
     is_anon = bool(row[6])
     real_author_id = row[4]
+    is_del = bool(row[12])
 
     post = {
         "post_id":       row[0],
@@ -178,7 +198,8 @@ def get_post(post_id):
         "likes_count":   row[8],
         "is_liked":      bool(row[9]),
         "is_mine":       (current_user == real_author_id) if current_user else False,
-        "board_type":    board_type
+        "board_type":    board_type,
+        "is_deleted":    is_del
     }
 
     return jsonify({
@@ -238,6 +259,36 @@ def create_post():
 
     except Exception as e:
         return jsonify({"status": "error", "message": f"서버 오류: {str(e)}"}), 500
+
+# ────────────────────────────────────────────
+# 게시물 삭제 (본인 게시물 논리적 삭제)
+# DELETE /posts/<post_id>
+# ────────────────────────────────────────────
+@posts_bp.route('/posts/<int:post_id>', methods=['DELETE'])
+def delete_post(post_id):
+    if 'student_id' not in session:
+        return jsonify({"status": "error", "message": "로그인이 필요합니다."}), 401
+
+    student_id = session['student_id']
+    db = DatabaseManager()
+
+    # 게시물 존재 여부 및 작성자 확인
+    post = db.query("SELECT author_id, is_deleted FROM Posts WHERE post_id = %(post_id)s", post_id=post_id).result
+    if not post:
+        return jsonify({"status": "error", "message": "게시물을 찾을 수 없습니다."}), 404
+
+    if post[0][1]:
+        return jsonify({"status": "error", "message": "이미 삭제된 게시물입니다."}), 400
+
+    if post[0][0] != student_id:
+        return jsonify({"status": "error", "message": "본인의 게시물만 삭제할 수 있습니다."}), 403
+
+    # 논리적 삭제 (is_deleted = TRUE)
+    db.query("UPDATE Posts SET is_deleted = TRUE WHERE post_id = %(post_id)s", post_id=post_id)
+    db.commit()
+
+    return jsonify({"status": "success", "message": "게시물이 삭제되었습니다."})
+
 
 # ────────────────────────────────────────────
 # 게시물 좋아요

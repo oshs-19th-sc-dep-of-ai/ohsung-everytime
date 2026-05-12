@@ -21,12 +21,30 @@ def _send_meal_notification(meal_type, title, icon):
     body = f"오늘의 {meal_type} 메뉴:\n{menu_text}"
 
     db = DatabaseManager()
-    tokens_data = db.query("SELECT DISTINCT token FROM fcm_tokens").result
+    tokens_data = db.query("""
+        SELECT DISTINCT t.token 
+        FROM fcm_tokens t
+        JOIN Students s ON t.user_id = s.student_id
+        WHERE s.meal_noti_enabled = TRUE
+    """).result
     tokens = [t[0] for t in tokens_data] if tokens_data else []
 
     if not tokens:
         print("[Scheduler] 등록된 FCM 토큰이 없습니다.")
         return
+
+    # 알림 내역 저장 (각 대상 사용자별로)
+    db.query(
+        """
+        INSERT INTO push_notifications (user_id, title, body, icon, link, created_at)
+        SELECT DISTINCT s.student_id, %(title)s, %(body)s, %(icon)s, %(link)s, NOW()
+        FROM fcm_tokens t
+        JOIN Students s ON t.user_id = s.student_id
+        WHERE s.meal_noti_enabled = TRUE
+        """,
+        title=title, body=body, icon=icon, link='https://square.coshsc.kr/meal'
+    )
+    db.commit()
 
     batch_size = 500
     for i in range(0, len(tokens), batch_size):

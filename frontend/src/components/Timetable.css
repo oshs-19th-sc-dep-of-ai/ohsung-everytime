@@ -1,0 +1,283 @@
+/* =========================================
+   Timetable Base Layout
+========================================= */
+.timetable-container {
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+    min-height: 100vh;
+    background-color: #F6F8FA;
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    color: #191F28;
+    padding: 30px 20px 100px 20px;
+    box-sizing: border-box;
+}
+
+.timetable-header-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.timetable-header-section h1 {
+    font-size: 24px;
+    font-weight: 700;
+    margin: 0;
+    color: #333D4B;
+}
+
+.btn-edit-toggle {
+    background-color: #3182F6;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, background-color 0.2s;
+}
+
+.btn-edit-toggle:active {
+    transform: scale(0.96);
+}
+
+.btn-edit-toggle.save-mode {
+    background-color: #4F46E5;
+}
+
+/* =========================================
+   Timetable Grid (여백 제거 및 일체형 디자인)
+========================================= */
+.timetable-card {
+    background-color: #FFFFFF;
+    border-radius: 20px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+    padding: 16px;
+}
+
+.timetable-grid {
+    display: grid;
+    grid-template-columns: 30px repeat(5, 1fr);
+    /* 셀 사이 여백을 1px로 주고 배경색을 칠해 얇은 테두리처럼 보이게 하는 트릭 */
+    gap: 1px;
+    background-color: #F2F4F6;
+    border: 1px solid #F2F4F6;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.grid-header {
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: #8B95A1;
+    padding: 10px 0;
+    background-color: #FFFFFF;
+}
+
+.grid-time-col {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: #8B95A1;
+    background-color: #FFFFFF;
+}
+
+.grid-cell {
+    min-height: 60px; /* 기존 비율 대신 고정 최소 높이 부여 */
+    background-color: #FFFFFF; /* 빈 칸은 흰색 */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    text-align: center;
+}
+
+.grid-cell:active {
+    opacity: 0.7;
+}
+
+.grid-cell.edit-mode:hover {
+    opacity: 0.8;
+}
+
+.cell-subject {
+    font-size: 12px;
+    font-weight: 700;
+    color: #333D4B;
+    margin-bottom: 2px;
+    word-break: keep-all;
+    line-height: 1.2;
+}
+
+.cell-location {
+    font-size: 10px;
+    color: #6B7684;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+/* =========================================
+   Modals & Color Picker
+========================================= */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: rgba(0, 0, 0, 0.4);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    padding: 20px;
+    backdrop-filter: blur(4px);
+}
+
+.modal-content {
+    background-color: #FFFFFF;
+    border-radius: 24px;
+    width: 100%;
+    max-width: 360px;
+    padding: 24px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+.modal-title {
+    font-size: 20px;
+    font-weight: 700;
+    margin: 0 0 16px 0;
+    color: #333D4B;
+}
+
+.modal-detail-item {
+    margin-bottom: 12px;
+}
+
+.modal-detail-label {
+    font-size: 12px;
+    color: #8B95A1;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.modal-detail-value {
+    font-size: 16px;
+    color: #191F28;
+    font-weight: 500;
+}
+
+/* Edit Modal Form */
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #4E5968;
+    margin-bottom: 8px;
+}
+
+.period-selector {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.period-chip {
+    padding: 6px 12px;
+    border-radius: 16px;
+    background-color: #F2F4F6;
+    font-size: 13px;
+    font-weight: 600;
+    color: #6B7684;
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+}
+
+.period-chip.selected {
+    background-color: #3182F6;
+    color: white;
+}
+
+.modal-input, .modal-select {
+    width: 100%;
+    height: 48px;
+    padding: 0 16px;
+    border-radius: 14px;
+    border: none;
+    background: #F2F4F6;
+    font-size: 15px;
+    outline: none;
+    color: #191F28;
+    box-sizing: border-box;
+}
+
+.modal-input:focus, .modal-select:focus {
+    background: #EAF1FF;
+}
+
+/* Color Picker UI */
+.color-picker-group {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.color-chip {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    border: 2px solid transparent;
+    transition: transform 0.2s, border-color 0.2s;
+}
+
+.color-chip.selected {
+    border-color: #3182F6;
+    transform: scale(1.15);
+}
+
+.modal-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.btn-cancel, .btn-submit {
+    flex: 1;
+    height: 48px;
+    border-radius: 14px;
+    border: none;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-cancel {
+    background-color: #F2F4F6;
+    color: #4E5968;
+}
+
+.btn-submit {
+    background-color: #3182F6;
+    color: white;
+}
+
+.btn-delete {
+    background-color: #FFF0F2;
+    color: #E93E4F;
+    margin-bottom: 12px;
+    width: 100%;
+}

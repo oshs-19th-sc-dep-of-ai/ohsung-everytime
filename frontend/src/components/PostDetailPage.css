@@ -79,6 +79,13 @@
     min-height: 100px;
 }
 
+/* 렌더링된 리치 텍스트 에디터 컨텐츠의 높이 자동 조절 */
+.rich-text-content.ql-editor {
+    height: auto;
+    min-height: min-content;
+    overflow-y: visible;
+}
+
 /* 게시글 공감 버튼 */
 .post-actions {
     display: flex;
@@ -253,6 +260,23 @@
     line-height: 1.5;
     color: #333;
     word-break: break-word;
+}
+
+/* 댓글 본문 내 GIF/이미지 크기 제한 */
+.comment-body img,
+.comment-body .inline-gif {
+    max-width: 160px;
+    max-height: 120px;
+    border-radius: 6px;
+    object-fit: contain;
+}
+
+/* 댓글 입력 에디터 내 GIF/이미지 미리보기 크기 제한 */
+.comment-quill .ql-editor img {
+    max-width: 120px;
+    max-height: 90px;
+    border-radius: 6px;
+    object-fit: contain;
 }
 
 .comment-like {
@@ -447,4 +471,54 @@
         padding-bottom: 20px;
         border-bottom: 1px solid #eee;
     }
+}
+
+/* 댓글 네비게이션 바 위에 고정 */
+.comment-form {
+  position: fixed;
+  bottom: 65px;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: #fff;
+  border-top: 1px solid #eee;
+  padding: 6px 12px;
+  box-shadow: 0 -2px 12px rgba(0,0,0,0.07);
+  max-height: 80px;
+  overflow: hidden;
+}
+
+/* 삭제된 항목 스타일 */
+.deleted-item {
+    opacity: 0.55;
+    background-color: #fafafa;
+    border-left: 3px solid #ff4d4f;
+    padding-left: 12px;
+    border-radius: 4px;
+}
+
+.deleted-item .comment-body {
+    color: #999;
+    font-style: italic;
+}
+
+.deleted-badge {
+    display: inline-block;
+    background: #ff4d4f;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+.deleted-post-title {
+    opacity: 0.6;
+}
+
+.post-card.deleted-post-card {
+    border-left: 3px solid #ff4d4f;
+    opacity: 0.65;
 }

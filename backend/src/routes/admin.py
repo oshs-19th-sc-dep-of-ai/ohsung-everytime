@@ -19,12 +19,15 @@ def admin_delete_post(post_id):
     db = DatabaseManager()
     
     # 게시물 존재 여부 확인
-    post = db.query("SELECT post_id FROM Posts WHERE post_id = %(post_id)s", post_id=post_id).result
+    post = db.query("SELECT post_id, is_deleted FROM Posts WHERE post_id = %(post_id)s", post_id=post_id).result
     if not post:
         return jsonify({"status": "error", "message": "게시물을 찾을 수 없습니다."}), 404
 
-    # 강제 삭제 (Cascade 적용되어 댓글, 좋아요 모두 삭제됨)
-    db.query("DELETE FROM Posts WHERE post_id = %(post_id)s", post_id=post_id)
+    if post[0][1]:
+        return jsonify({"status": "error", "message": "이미 삭제된 게시물입니다."}), 400
+
+    # 논리적 삭제 (is_deleted = TRUE)
+    db.query("UPDATE Posts SET is_deleted = TRUE WHERE post_id = %(post_id)s", post_id=post_id)
     db.commit()
 
     return jsonify({"status": "success", "message": "게시물이 강제로 삭제되었습니다."})
@@ -38,12 +41,15 @@ def admin_delete_comment(comment_id):
     db = DatabaseManager()
 
     # 댓글 존재 여부 확인
-    comment = db.query("SELECT comment_id FROM Comments WHERE comment_id = %(comment_id)s", comment_id=comment_id).result
+    comment = db.query("SELECT comment_id, is_deleted FROM Comments WHERE comment_id = %(comment_id)s", comment_id=comment_id).result
     if not comment:
         return jsonify({"status": "error", "message": "댓글을 찾을 수 없습니다."}), 404
 
-    # DB에서 강제 삭제 (대댓글 및 좋아요 cascade 삭제됨)
-    db.query("DELETE FROM Comments WHERE comment_id = %(comment_id)s", comment_id=comment_id)
+    if comment[0][1]:
+        return jsonify({"status": "error", "message": "이미 삭제된 댓글입니다."}), 400
+
+    # 논리적 삭제 (is_deleted = TRUE)
+    db.query("UPDATE Comments SET is_deleted = TRUE WHERE comment_id = %(comment_id)s", comment_id=comment_id)
     db.commit()
 
     return jsonify({"status": "success", "message": "댓글이 강제로 삭제되었습니다."})
@@ -105,12 +111,29 @@ def admin_push_notification():
         if target_user_id:
             # 특정 사용자 대상
             tokens = db.query("SELECT token FROM fcm_tokens WHERE user_id = %(user_id)s", user_id=target_user_id).result
+            db.query(
+                """
+                INSERT INTO push_notifications (user_id, title, body, icon, created_at)
+                VALUES (%(user_id)s, %(title)s, %(body)s, %(icon)s, NOW())
+                """,
+                user_id=target_user_id, title=title, body=body, icon='/icon_notification.svg'
+            )
         else:
             # 전체 사용자 대상
             tokens = db.query("SELECT token FROM fcm_tokens").result
+            db.query(
+                """
+                INSERT INTO push_notifications (user_id, title, body, icon, created_at)
+                SELECT DISTINCT user_id, %(title)s, %(body)s, %(icon)s, NOW()
+                FROM fcm_tokens
+                """,
+                title=title, body=body, icon='/icon_notification.svg'
+            )
+
+        db.commit()
 
         if not tokens:
-            return jsonify({"status": "success", "message": "전송할 FCM 디바이스 토큰이 없습니다."})
+            return jsonify({"status": "success", "message": "전송할 FCM 디바이스 토큰이 없으나, 내역은 저장되었습니다."})
 
         # 토큰 리스트 추출
         token_list = [t[0] for t in tokens]
@@ -243,3 +266,62 @@ def admin_test_dinner_push():
     except Exception as e:
         return jsonify({"status": "error", "message": f"석식 알람 테스트 실패: {str(e)}"}), 500
 
+
+# ────────────────────────────────────────────
+# 6. 삭제 로그 조회
+# ────────────────────────────────────────────
+@admin_bp.route('/deleted-logs', methods=['GET'])
+def admin_deleted_logs():
+    if not eta_admin():
+        return jsonify({"status": "error", "message": "모더레이터 권한이 필요합니다."}), 403
+
+    db = DatabaseManager()
+    
+    post_sql = """
+        SELECT p.post_id, p.title, s.student_name, p.created_at
+        FROM Posts p
+        JOIN Students s ON p.author_id = s.student_id
+        WHERE p.is_deleted = TRUE
+        ORDER BY p.created_at DESC
+        LIMIT 50
+    """
+    deleted_posts = db.query(post_sql).result
+
+    comment_sql = """
+        SELECT c.comment_id, c.content, s.student_name, c.created_at, c.post_id
+        FROM Comments c
+        JOIN Students s ON c.author_id = s.student_id
+        WHERE c.is_deleted = TRUE
+        ORDER BY c.created_at DESC
+        LIMIT 50
+    """
+    deleted_comments = db.query(comment_sql).result
+
+    logs = []
+    for row in deleted_posts:
+        logs.append({
+            "type": "post",
+            "id": row[0],
+            "title": row[1],
+            "author": row[2],
+            "created_at": row[3].strftime('%Y-%m-%d %H:%M:%S') if row[3] else None
+        })
+
+    for row in deleted_comments:
+        import re
+        clean_content = re.sub(r'<[^>]+>', ' ', row[1]).strip()
+        logs.append({
+            "type": "comment",
+            "id": row[0],
+            "content": clean_content[:100] + "…" if len(clean_content) > 100 else clean_content,
+            "author": row[2],
+            "created_at": row[3].strftime('%Y-%m-%d %H:%M:%S') if row[3] else None,
+            "post_id": row[4]
+        })
+
+    logs.sort(key=lambda x: x['created_at'], reverse=True)
+
+    return jsonify({
+        "status": "success",
+        "data": logs
+    })

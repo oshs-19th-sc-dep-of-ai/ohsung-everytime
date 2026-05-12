@@ -9,7 +9,8 @@ CREATE TABLE IF NOT EXISTS Students (
     student_pw CHAR(64) NOT NULL,
     rent_admin BOOLEAN DEFAULT FALSE,
     eta_admin BOOLEAN DEFAULT FALSE,
-    grade INT NOT NULL
+    grade INT NOT NULL,
+    meal_noti_enabled BOOLEAN DEFAULT TRUE
 );
 
 -- 댓글 테이블 (Comments)
@@ -46,6 +47,7 @@ CREATE TABLE IF NOT EXISTS Posts (
     board_type VARCHAR(20) NOT NULL DEFAULT 'general',
     is_anonymous BOOLEAN DEFAULT FALSE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    is_deleted BOOLEAN DEFAULT FALSE,
     FOREIGN KEY (author_id) REFERENCES Students (student_id) ON DELETE CASCADE
 );
 
