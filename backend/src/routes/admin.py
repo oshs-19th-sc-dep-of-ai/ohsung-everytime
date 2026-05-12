@@ -145,7 +145,8 @@ def admin_push_notification():
                 notification=messaging.WebpushNotification(
                     icon='/icon_notification.svg',
                     badge='/icon_notification.svg'
-                )
+                ),
+                fcm_options=messaging.WebpushFCMOptions(link='https://square.coshsc.kr/notifications')
             ),
             tokens=token_list
         )

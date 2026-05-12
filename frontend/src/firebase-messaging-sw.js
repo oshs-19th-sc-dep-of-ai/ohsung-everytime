@@ -69,7 +69,7 @@ messaging.onBackgroundMessage((payload) => {
             icon: '/icon_notification.svg',
             badge: '/icon_notification.svg',
             data: {
-                link: payload.fcmOptions?.link || payload.data?.link || '/meal'
+                link: payload.fcmOptions?.link || payload.data?.link || 'https://square.coshsc.kr/notifications'
             }
         });
     }
@@ -80,7 +80,7 @@ self.addEventListener('notificationclick', function(event) {
     event.notification.close();
     
     // 링크 정보 추출 (FCM fcm_options.link, data.link 등)
-    let targetUrl = '/meal';
+    let targetUrl = 'https://square.coshsc.kr/notifications';
     if (event.notification.data && event.notification.data.link) {
         targetUrl = event.notification.data.link;
     } else if (event.notification.data && event.notification.data.FCM_MSG && event.notification.data.FCM_MSG.fcmOptions && event.notification.data.FCM_MSG.fcmOptions.link) {
