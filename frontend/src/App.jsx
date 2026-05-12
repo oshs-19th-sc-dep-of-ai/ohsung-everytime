@@ -46,16 +46,16 @@ function PublicRoute({ children }) {
 }
 
 // 탭 순서를 정의하여 전환 방향(왼쪽/오른쪽) 결정
-// 시간표(/timetable)를 급식과 관리자 사이에 배치
-const TAB_ORDER = ['/', '/board', '/postWrite', '/meal', '/notifications', '/timetable', '/admin'];
+// 홈 -> 게시판 -> 글쓰기 -> 시간표 -> 급식 -> 알림 -> 설정 순으로 배치
+const TAB_ORDER = ['/', '/board', '/postWrite', '/timetable', '/meal', '/notifications', '/admin'];
 
 const getTabIndex = (pathname) => {
     if (pathname === '/') return 0;
     if (pathname.startsWith('/board') || pathname.startsWith('/post/')) return 1;
     if (pathname.startsWith('/postWrite')) return 2;
-    if (pathname.startsWith('/meal')) return 3;
-    if (pathname.startsWith('/notifications')) return 4;
-    if (pathname.startsWith('/timetable')) return 5;
+    if (pathname.startsWith('/timetable')) return 3;
+    if (pathname.startsWith('/meal')) return 4;
+    if (pathname.startsWith('/notifications')) return 5;
     if (pathname.startsWith('/admin')) return 6;
     return -1;
 };
