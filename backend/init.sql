@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS Posts (
     author_id CHAR(7) NOT NULL,
     title VARCHAR(255) NOT NULL,
     content TEXT NOT NULL,
+    board_type VARCHAR(20) NOT NULL DEFAULT 'general',
     is_anonymous BOOLEAN DEFAULT FALSE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (author_id) REFERENCES Students (student_id) ON DELETE CASCADE

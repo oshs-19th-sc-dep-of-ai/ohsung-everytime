@@ -22,12 +22,31 @@ def get_posts():
 
     offset = (page - 1) * limit
 
+    board_type = request.args.get('board_type', 'general').strip()
+    if board_type not in ['general', 'grade', 'lost_found']:
+        board_type = 'general'
+
+    current_user = session.get('student_id', '')
+    is_eta_admin = session.get('eta_admin') is True
+
+    # 쿼리 조건 생성
+    where_clause = "WHERE p.board_type = %(board_type)s"
+    
+    if board_type == 'grade':
+        if is_eta_admin:
+            where_clause = "WHERE p.board_type = 'grade'"
+        else:
+            if not current_user:
+                return jsonify({"status": "error", "message": "로그인이 필요합니다."}), 401
+            where_clause = """WHERE p.board_type = 'grade' 
+                              AND s.grade = (SELECT grade FROM Students WHERE student_id = %(current_user)s)"""
+
     # 전체 게시물 수
-    count_sql = "SELECT COUNT(*) FROM Posts"
-    total_count = db.query(count_sql).result[0][0]
+    count_sql = f"SELECT COUNT(*) FROM Posts p JOIN Students s ON p.author_id = s.student_id {where_clause}"
+    total_count = db.query(count_sql, board_type=board_type, current_user=current_user).result[0][0]
 
     # 게시물 목록 (작성자 이름, 댓글 수 포함)
-    sql = """
+    sql = f"""
         SELECT
             p.post_id,
             p.title,
@@ -38,15 +57,16 @@ def get_posts():
             p.is_anonymous,
             (SELECT COUNT(*) FROM Comments c WHERE c.post_id = p.post_id AND c.is_deleted = FALSE) AS comment_count,
             (SELECT COUNT(*) FROM PostLikes pl WHERE pl.post_id = p.post_id) AS likes_count,
-            EXISTS(SELECT 1 FROM PostLikes pl WHERE pl.post_id = p.post_id AND pl.student_id = %(current_user)s) AS is_liked
+            EXISTS(SELECT 1 FROM PostLikes pl WHERE pl.post_id = p.post_id AND pl.student_id = %(current_user)s) AS is_liked,
+            p.board_type
         FROM Posts p
         JOIN Students s ON p.author_id = s.student_id
+        {where_clause}
         ORDER BY p.created_at DESC
         LIMIT %(limit)s OFFSET %(offset)s
     """
 
-    current_user = session.get('student_id', '')
-    rows = db.query(sql, limit=limit, offset=offset, current_user=current_user).result
+    rows = db.query(sql, limit=limit, offset=offset, board_type=board_type, current_user=current_user).result
 
     posts = []
     for row in rows:
@@ -74,6 +94,7 @@ def get_posts():
             "comment_count":   row[7],
             "likes_count":     row[8],
             "is_liked":        bool(row[9]),
+            "board_type":      row[10],
         })
 
     return jsonify({
@@ -108,7 +129,9 @@ def get_post(post_id):
             p.is_anonymous,
             (SELECT COUNT(*) FROM Comments c WHERE c.post_id = p.post_id AND c.is_deleted = FALSE) AS comment_count,
             (SELECT COUNT(*) FROM PostLikes pl WHERE pl.post_id = p.post_id) AS likes_count,
-            EXISTS(SELECT 1 FROM PostLikes pl WHERE pl.post_id = p.post_id AND pl.student_id = %(current_user)s) AS is_liked
+            EXISTS(SELECT 1 FROM PostLikes pl WHERE pl.post_id = p.post_id AND pl.student_id = %(current_user)s) AS is_liked,
+            p.board_type,
+            s.grade
         FROM Posts p
         JOIN Students s ON p.author_id = s.student_id
         WHERE p.post_id = %(post_id)s
@@ -121,6 +144,25 @@ def get_post(post_id):
         return jsonify({"status": "error", "message": "게시물을 찾을 수 없습니다."}), 404
 
     row = rows[0]
+    board_type = row[10]
+    author_grade = row[11]
+    
+    is_eta_admin = session.get('eta_admin') is True
+    
+    if board_type == 'grade' and not is_eta_admin:
+        if not current_user:
+            return jsonify({"status": "error", "message": "로그인이 필요합니다."}), 401
+            
+        current_user_grade = session.get('grade')
+        if not current_user_grade:
+            user_res = db.query("SELECT grade FROM Students WHERE student_id = %(current_user)s", current_user=current_user).result
+            if user_res:
+                current_user_grade = user_res[0][0]
+                session['grade'] = current_user_grade
+                
+        if current_user_grade != author_grade:
+            return jsonify({"status": "error", "message": "다른 학년의 게시물은 열람할 수 없습니다."}), 403
+
     is_anon = bool(row[6])
     real_author_id = row[4]
 
@@ -136,7 +178,7 @@ def get_post(post_id):
         "likes_count":   row[8],
         "is_liked":      bool(row[9]),
         "is_mine":       (current_user == real_author_id) if current_user else False,
-
+        "board_type":    board_type
     }
 
     return jsonify({
@@ -160,6 +202,10 @@ def create_post():
     title        = data.get('title', '').strip()
     content      = data.get('content', '').strip()
     is_anonymous = bool(data.get('is_anonymous', False))
+    board_type   = data.get('board_type', 'general').strip()
+    
+    if board_type not in ['general', 'grade', 'lost_found']:
+        return jsonify({"status": "error", "message": "유효하지 않은 게시판 종류입니다."}), 400
 
     if not title:
         return jsonify({"status": "error", "message": "제목을 입력해주세요."}), 400
@@ -172,12 +218,12 @@ def create_post():
     db = DatabaseManager()
 
     sql = """
-        INSERT INTO Posts (author_id, title, content, is_anonymous)
-        VALUES (%(author_id)s, %(title)s, %(content)s, %(is_anonymous)s)
+        INSERT INTO Posts (author_id, title, content, is_anonymous, board_type)
+        VALUES (%(author_id)s, %(title)s, %(content)s, %(is_anonymous)s, %(board_type)s)
     """
 
     try:
-        db.query(sql, author_id=student_id, title=title, content=content, is_anonymous=is_anonymous)
+        db.query(sql, author_id=student_id, title=title, content=content, is_anonymous=is_anonymous, board_type=board_type)
         db.commit()
 
         # 방금 삽입된 post_id 조회

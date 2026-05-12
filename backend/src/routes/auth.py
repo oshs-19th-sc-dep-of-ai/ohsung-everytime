@@ -23,7 +23,7 @@ def login():
     # 학생 로그인 처리
     student = db.query(
         """
-        SELECT student_id, student_name, rent_admin, eta_admin FROM Students
+        SELECT student_id, student_name, rent_admin, eta_admin, grade FROM Students
         WHERE student_id = %(student_id)s AND student_pw = SHA2(%(student_pw)s, 256)
         """,
         student_id=input_student_id,
@@ -35,7 +35,7 @@ def login():
 
     if student:
         student = student[0]
-        student_id, student_name, rent_admin, eta_admin = student
+        student_id, student_name, rent_admin, eta_admin, grade = student
 
         # 세션 사용 사용자 정보 저장
         session.permanent = True
@@ -44,6 +44,7 @@ def login():
         session['session_student_id'] = student_id  # 다른 라우트 호환용
         session['rent_admin'] = bool(rent_admin)
         session['eta_admin'] = bool(eta_admin)
+        session['grade'] = grade # 학년 게시판 용도ㅉ
 
         if eta_admin:
             # 모더레이터 키 명시적 설정 (이제 rent_admin만으로는 설정되지 않음)
