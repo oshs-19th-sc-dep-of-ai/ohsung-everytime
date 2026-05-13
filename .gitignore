@@ -7,3 +7,4 @@ docker-compose.yml
 # Firebase 서비스 계정 키 (절대 Git에 올리지 마세요!)
 backend/firebase_credentials.json
 .agents/workflows/test.md
+.gemini/settings.json

@@ -189,6 +189,25 @@ function PushNotificationTab() {
     }
   };
 
+  const sendTestTimetablePush = async (period = 1) => {
+    setLoading(true);
+    setResult(null);
+    try {
+      const data = await apiFetch("/admin/test/timetable-push", {
+        method: "POST",
+        body: JSON.stringify({ period }),
+      });
+      setResult({
+        type: "success",
+        message: data.message,
+      });
+    } catch (e) {
+      setResult({ type: "error", message: `⚠️ ${e.message}` });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div>
       <p className="admin-section-title">수동 푸시 알림 전송</p>
@@ -257,6 +276,15 @@ function PushNotificationTab() {
             style={{ backgroundColor: '#e91e63' }}
           >
             🍽️ 석식 알림 전송 테스트
+          </LoadingBtn>
+
+          <LoadingBtn
+            loading={loading}
+            onClick={() => sendTestTimetablePush(1)}
+            className="admin-btn--secondary"
+            style={{ backgroundColor: '#2196f3' }}
+          >
+            📚 시간표(1교시) 알림 테스트
           </LoadingBtn>
         </div>
 
@@ -604,6 +632,89 @@ function MealNotificationSettingTab() {
   );
 }
 
+function TimetableNotificationSettingTab() {
+  const [notiEnabled, setNotiEnabled] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const { showToast } = useToast();
+
+  useEffect(() => {
+    const fetchNotiStatus = async () => {
+      try {
+        const data = await apiFetch("/notifications/timetable-notification");
+        setNotiEnabled(data.timetable_noti_enabled);
+      } catch (error) {
+        console.error("시간표 알림 설정 상태를 가져오는데 실패했습니다.", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchNotiStatus();
+  }, []);
+
+  const toggleNoti = async () => {
+    setLoading(true);
+    try {
+      const newVal = !notiEnabled;
+      await apiFetch("/notifications/timetable-notification", {
+        method: "POST",
+        body: JSON.stringify({ enabled: newVal }),
+      });
+      setNotiEnabled(newVal);
+      showToast(`시간표 알림이 ${newVal ? '켜졌' : '꺼졌'}습니다.`);
+    } catch (error) {
+      console.error("시간표 알림 설정 변경 실패", error);
+      showToast("시간표 알림 설정 변경에 실패했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ marginTop: '12px' }}>
+      <div className="admin-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <div style={{ fontWeight: 'bold', fontSize: '15px' }}>시간표 수업 알림</div>
+          <div style={{ fontSize: '13px', color: '#666', marginTop: '4px' }}>설정한 시간표에 따라 수업 시작 전 알림을 받습니다.</div>
+        </div>
+        <button
+          onClick={toggleNoti}
+          disabled={loading}
+          style={{
+            position: 'relative',
+            width: '52px',
+            height: '28px',
+            borderRadius: '16px',
+            backgroundColor: notiEnabled ? '#6c63ff' : '#e0e0e0',
+            border: 'none',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            opacity: loading ? 0.7 : 1,
+            display: 'flex',
+            alignItems: 'center',
+            padding: '4px',
+            transition: 'background-color 0.3s ease',
+            outline: 'none',
+            flexShrink: 0
+          }}
+        >
+          <motion.div
+            layout
+            initial={false}
+            animate={{ x: notiEnabled ? 24 : 0 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+            style={{
+              width: '20px',
+              height: '20px',
+              borderRadius: '50%',
+              backgroundColor: '#fff',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+            }}
+          />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 import { useNetwork } from '../contexts/NetworkContext.jsx';
 
 // 메인 AdminPage (설정 페이지)
@@ -647,6 +758,7 @@ export default function AdminPage() {
           <>
             <ChangePasswordTab />
             <MealNotificationSettingTab />
+            <TimetableNotificationSettingTab />
             
             {isMod && (
               <>

@@ -267,6 +267,21 @@ def admin_test_dinner_push():
     except Exception as e:
         return jsonify({"status": "error", "message": f"석식 알람 테스트 실패: {str(e)}"}), 500
 
+@admin_bp.route('/test/timetable-push', methods=['POST'])
+def admin_test_timetable_push():
+    if not eta_admin():
+        return jsonify({"status": "error", "message": "모더레이터 권한이 필요합니다."}), 403
+
+    data = request.get_json(silent=True) or {}
+    period = data.get('period', 1)
+
+    from ..utils.scheduler_util import send_timetable_notification
+    try:
+        send_timetable_notification(period)
+        return jsonify({"status": "success", "message": f"{period}교시 알람 푸시 테스트가 실행되었습니다. (서버 로그 확인)"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"시간표 알람 테스트 실패: {str(e)}"}), 500
+
 
 # ────────────────────────────────────────────
 # 6. 삭제 로그 조회

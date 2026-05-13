@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
+import { useToast } from '../contexts/ToastContext.jsx';
 import './Timetable.css';
 
 const DAYS = ['월', '화', '수', '목', '금'];
@@ -38,17 +39,17 @@ function getDateOfSpecificDay(baseDateStr, targetDayOfWeek) {
     const year = parseInt(baseDateStr.slice(0, 4));
     const month = parseInt(baseDateStr.slice(4, 6)) - 1;
     const day = parseInt(baseDateStr.slice(6, 8));
-    
+
     const baseDate = new Date(year, month, day);
     const baseDayOfWeek = baseDate.getDay(); // 0(일) ~ 6(토)
-    
+
     // 일요일을 7로 조정하여 월(1)~일(7) 범위로 맞춤
     const adjustedBaseDay = baseDayOfWeek === 0 ? 7 : baseDayOfWeek;
-    
+
     const diff = targetDayOfWeek - adjustedBaseDay;
     const targetDate = new Date(baseDate);
     targetDate.setDate(baseDate.getDate() + diff);
-    
+
     const y = targetDate.getFullYear();
     const m = String(targetDate.getMonth() + 1).padStart(2, '0');
     const d = String(targetDate.getDate()).padStart(2, '0');
@@ -69,6 +70,8 @@ function processClassroom(rawClrm) {
 }
 
 export function Timetable() {
+    const { showToast } = useToast();
+
     // ─── 시간표 그리드 상태 ───────────────────────────────────────────
     const [grid, setGrid] = useState(Array.from({ length: 7 }, () => Array(5).fill(null)));
 
@@ -96,6 +99,45 @@ export function Timetable() {
         isAutoLocation: false,
     });
 
+    // ─── 변경사항 추적 ─────────────────────────────────────────────────
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+    // 저장하지 않고 이탈 방지 (새로고침, 탭 닫기)
+    useEffect(() => {
+        const handleBeforeUnload = (e) => {
+            if (hasUnsavedChanges) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [hasUnsavedChanges]);
+
+    // 저장하지 않고 이탈 방지 (앱 내 네비게이션 - BottomNav, Header 클릭 등)
+    useEffect(() => {
+        const handleGlobalClick = (e) => {
+            if (!hasUnsavedChanges) return;
+
+            const container = document.querySelector('.timetable-container');
+            // 클릭한 요소가 시간표 컨테이너 바깥인 경우 (예: 네비게이션 바)
+            if (container && !container.contains(e.target)) {
+                if (!window.confirm('저장하지 않은 변경사항이 있습니다. 정말 이동하시겠습니까?')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                } else {
+                    setHasUnsavedChanges(false);
+                }
+            }
+        };
+
+        // 캡처 페이즈에서 이벤트 가로채기
+        document.addEventListener('click', handleGlobalClick, { capture: true });
+        return () => {
+            document.removeEventListener('click', handleGlobalClick, { capture: true });
+        };
+    }, [hasUnsavedChanges]);
+
     // ─── 시간표 불러오기 ──────────────────────────────────────────────
     const fetchTimetable = useCallback(async () => {
         try {
@@ -110,6 +152,7 @@ export function Timetable() {
                 }
             });
             setGrid(newGrid);
+            setHasUnsavedChanges(false);
         } catch (err) {
             console.error('시간표 불러오기 실패:', err);
         }
@@ -185,9 +228,9 @@ export function Timetable() {
             setEditForm({
                 period,
                 subject_name: initialSubject,
-                location:     initialLocation,
-                memo:         cellData?.memo         || '',
-                color:        cellData?.color        || PRESET_COLORS[0],
+                location: initialLocation,
+                memo: cellData?.memo || '',
+                color: cellData?.color || PRESET_COLORS[0],
                 isAutoLocation: initialAuto,
             });
         } else if (cellData) {
@@ -200,7 +243,7 @@ export function Timetable() {
         const options = byPeriod[String(editForm.period)] || [];
         const found = options.find(o => o.subject === subject);
         const processed = processClassroom(found?.clrm);
-        
+
         setEditForm(prev => ({
             ...prev,
             subject_name: subject,
@@ -212,25 +255,26 @@ export function Timetable() {
     // ─── 적용 저장 ────────────────────────────────────────────────────
     const handleEditSave = () => {
         if (!editForm.subject_name.trim()) {
-            alert('과목을 선택해주세요.');
+            showToast('알림', '과목을 선택해주세요.');
             return;
         }
         if (!editForm.location.trim()) {
-            alert('강의실(교실) 위치를 입력해주세요.');
+            showToast('알림', '강의실(교실) 위치를 입력해주세요.');
             return;
         }
         const newGrid = grid.map(row => [...row]);
         const di = editModal.day - 1;
         const pi = editModal.period - 1;
         newGrid[pi][di] = {
-            day_of_week:  editModal.day,
-            period:       editModal.period,
+            day_of_week: editModal.day,
+            period: editModal.period,
             subject_name: editForm.subject_name,
-            location:     editForm.location,
-            memo:         editForm.memo,
-            color:        editForm.color,
+            location: editForm.location,
+            memo: editForm.memo,
+            color: editForm.color,
         };
         setGrid(newGrid);
+        setHasUnsavedChanges(true);
         setEditModal({ open: false, day: null, period: null });
     };
 
@@ -239,6 +283,7 @@ export function Timetable() {
         const newGrid = grid.map(row => [...row]);
         newGrid[editModal.period - 1][editModal.day - 1] = null;
         setGrid(newGrid);
+        setHasUnsavedChanges(true);
         setEditModal({ open: false, day: null, period: null });
     };
 
@@ -248,12 +293,13 @@ export function Timetable() {
         grid.forEach(row => row.forEach(cell => { if (cell) payload.push(cell); }));
         try {
             await axios.put(`${API_BASE_URL}/timetable`, { timetable: payload }, { withCredentials: true });
-            alert('시간표가 성공적으로 저장되었습니다!');
+            showToast('성공', '시간표가 성공적으로 저장되었습니다!');
+            setHasUnsavedChanges(false);
             setIsEditMode(false);
             fetchTimetable();
         } catch (err) {
             console.error('시간표 저장 실패:', err);
-            alert('시간표 저장에 실패했습니다.');
+            showToast('오류', '시간표 저장에 실패했습니다.');
         }
     };
 
@@ -301,38 +347,14 @@ export function Timetable() {
                 )}
             </div>
 
-            {/* 편집 모드: NEIS 날짜 선택 배너 */}
-            {isEditMode && (
-                <div className="neis-date-banner">
-                    <span className="neis-banner-label">📅 기준 날짜</span>
-                    <input
-                        type="date"
-                        id="neis-date-picker"
-                        className="neis-date-input"
-                        value={dateInputValue}
-                        onChange={handleDateChange}
-                    />
-                    <button
-                        className="neis-refresh-btn"
-                        onClick={() => fetchAvailable(neisDate)}
-                        disabled={neisLoading}
-                        title="과목 목록 새로고침"
-                    >
-                        {neisLoading ? '⏳' : '🔄'}
-                    </button>
-                    {neisError && <span className="neis-error-badge">{neisError}</span>}
-                    {!neisLoading && !neisError && Object.keys(byPeriod).length > 0 && (
-                        <span className="neis-ok-badge">✓ 과목 로드 완료</span>
-                    )}
-                </div>
-            )}
+
 
             <div className="timetable-card">
                 <div className="timetable-grid">
                     <div className="grid-header"></div>
                     {DAYS.map((day, i) => (
-                        <div 
-                            key={i} 
+                        <div
+                            key={i}
                             className={`grid-header ${isEditMode ? 'clickable' : ''} ${isEditMode && i === activeDayIndex ? 'active-date' : ''}`}
                             onClick={() => handleHeaderClick(i)}
                         >
@@ -415,15 +437,15 @@ export function Timetable() {
                                     {currentOptions
                                         .filter((opt, index, self) => index === self.findIndex((t) => t.subject === opt.subject))
                                         .map((opt, idx) => (
-                                        <div
-                                            key={idx}
-                                            id={`subject-opt-${idx}`}
-                                            className={`subject-option-chip ${editForm.subject_name === opt.subject ? 'selected' : ''}`}
-                                            onClick={() => handleSubjectChange(opt.subject)}
-                                        >
-                                            <span className="chip-subject">{opt.subject}</span>
-                                        </div>
-                                    ))}
+                                            <div
+                                                key={idx}
+                                                id={`subject-opt-${idx}`}
+                                                className={`subject-option-chip ${editForm.subject_name === opt.subject ? 'selected' : ''}`}
+                                                onClick={() => handleSubjectChange(opt.subject)}
+                                            >
+                                                <span className="chip-subject">{opt.subject}</span>
+                                            </div>
+                                        ))}
                                 </div>
                             ) : (
                                 <div className="neis-empty-hint">
@@ -436,7 +458,7 @@ export function Timetable() {
                         {/* 선택된 과목 및 강의실 설정 */}
                         <div className="form-group">
                             <label className="form-label">
-                                과목명 <span style={{color: '#E93E4F'}}>*</span>
+                                과목명 <span style={{ color: '#E93E4F' }}>*</span>
                             </label>
                             <input
                                 type="text"
@@ -450,7 +472,7 @@ export function Timetable() {
                         {/* 강의실 입력란 */}
                         <div className="form-group">
                             <label className="form-label">
-                                강의실(위치) <span style={{color: '#E93E4F'}}>*</span>
+                                강의실(위치) <span style={{ color: '#E93E4F' }}>*</span> <span style={{ fontSize: '0.7rem', color: '#999', marginLeft: '4px', fontWeight: 'normal' }}>(수정이 필요할 수도 있습니다)</span>
                             </label>
                             <input
                                 type="text"
@@ -475,16 +497,16 @@ export function Timetable() {
                                 ))}
                                 <label
                                     className={`color-chip custom-color-chip ${!PRESET_COLORS.includes(editForm.color) ? 'selected' : ''}`}
-                                    style={{ 
+                                    style={{
                                         backgroundColor: !PRESET_COLORS.includes(editForm.color) ? editForm.color : '#FFFFFF'
                                     }}
                                     title="사용자 지정 색상"
                                 >
                                     {PRESET_COLORS.includes(editForm.color) && <span className="custom-color-plus">+</span>}
-                                    <input 
-                                        type="color" 
+                                    <input
+                                        type="color"
                                         className="custom-color-input"
-                                        value={editForm.color} 
+                                        value={editForm.color}
                                         onChange={(e) => setEditForm({ ...editForm, color: e.target.value.toUpperCase() })}
                                     />
                                 </label>

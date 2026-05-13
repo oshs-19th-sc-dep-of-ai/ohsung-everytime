@@ -96,6 +96,75 @@ def send_dinner_menu_notification():
     _send_meal_notification("석식", "오늘의 석식 알림 🍱", "/icon_restaurant.svg")
 
 
+def send_timetable_notification(period):
+    kst = pytz.timezone('Asia/Seoul')
+    now = datetime.now(kst)
+    day_of_week = now.weekday() + 1 # 1: 월, 5: 금
+    
+    if day_of_week > 5: # 주말
+        return
+
+    db = DatabaseManager()
+    
+    query = """
+        SELECT t.token, s.student_id, tt.subject_name, tt.location
+        FROM fcm_tokens t
+        JOIN Students s ON t.user_id = s.student_id
+        JOIN Timetable tt ON s.student_id = tt.student_id
+        WHERE s.timetable_noti_enabled = TRUE
+          AND tt.day_of_week = %(day_of_week)s
+          AND tt.period = %(period)s
+    """
+    results = db.query(query, day_of_week=day_of_week, period=period).result
+    
+    if not results:
+        print(f"[Scheduler] {period}교시 시간표 알림: 대상자가 없습니다.")
+        return
+        
+    messages = []
+    tokens_to_delete = []
+    
+    for row in results:
+        token, student_id, subject_name, location = row
+        title = f"{period}교시 시작 알림 📚"
+        body = f"잠시 후 [{subject_name}] 수업이 시작됩니다!"
+        if location:
+            body = f"잠시 후 [{location}]에서 [{subject_name}] 수업이 시작됩니다!"
+            
+        messages.append(
+            messaging.Message(
+                notification=messaging.Notification(title=title, body=body),
+                webpush=messaging.WebpushConfig(
+                    notification=messaging.WebpushNotification(
+                        icon="/icon_timetable.svg",
+                        badge="/icon_timetable.svg"
+                    ),
+                    fcm_options=messaging.WebpushFCMOptions(link="https://square.coshsc.kr/timetable")
+                ),
+                token=token
+            )
+        )
+    
+    batch_size = 500
+    for i in range(0, len(messages), batch_size):
+        batch = messages[i:i + batch_size]
+        try:
+            response = messaging.send_each(batch)
+            print(f"[Scheduler] {period}교시 알림 전송 완료. 성공: {response.success_count}, 실패: {response.failure_count}")
+            if response.failure_count > 0:
+                for idx, resp in enumerate(response.responses):
+                    if not resp.success:
+                        if resp.exception and resp.exception.code in ['INVALID_ARGUMENT', 'NOT_FOUND', 'UNREGISTERED']:
+                            tokens_to_delete.append(batch[idx].token)
+        except Exception as e:
+            print(f"[Scheduler] {period}교시 알림 전송 실패: {e}")
+            
+    if tokens_to_delete:
+        for token in set(tokens_to_delete):
+            db.query("DELETE FROM fcm_tokens WHERE token = %(token)s", token=token)
+        db.commit()
+
+
 class NotificationScheduler:
     def __init__(self):
         self.scheduler = BackgroundScheduler(timezone="Asia/Seoul")
@@ -119,5 +188,29 @@ class NotificationScheduler:
             id='dinner_notification_job',
             replace_existing=True
         )
+        
+        # 시간표 알림
+        timetable_schedule = [
+            (1, 8, 30),
+            (2, 9, 30),
+            (3, 10, 40),
+            (4, 12, 30),
+            (5, 13, 30),
+            (6, 14, 30),
+            (7, 15, 30)
+        ]
+        
+        for period, hour, minute in timetable_schedule:
+            self.scheduler.add_job(
+                send_timetable_notification,
+                'cron',
+                day_of_week='mon-fri',
+                hour=hour,
+                minute=minute,
+                args=[period],
+                id=f'timetable_notification_job_p{period}',
+                replace_existing=True
+            )
+            
         self.scheduler.start()
-        print("[Scheduler] 급식 알림 스케줄러가 시작되었습니다 (중식 11:30, 석식 15:30)")
+        print("[Scheduler] 급식 및 시간표 알림 스케줄러가 시작되었습니다.")
