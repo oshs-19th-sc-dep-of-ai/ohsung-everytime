@@ -29,56 +29,15 @@ function getNearestSchoolDay() {
     return `${y}${m}${d}`;
 }
 
-/**
- * 특정 기준 날짜(baseDateStr)가 속한 주의 특정 요일(targetDayOfWeek)의 날짜를 계산해 YYYYMMDD로 반환
- * @param {string} baseDateStr YYYYMMDD
- * @param {number} targetDayOfWeek 1(월) ~ 5(금)
- */
-function getDateOfSpecificDay(baseDateStr, targetDayOfWeek) {
-    if (!baseDateStr) return '';
-    const year = parseInt(baseDateStr.slice(0, 4));
-    const month = parseInt(baseDateStr.slice(4, 6)) - 1;
-    const day = parseInt(baseDateStr.slice(6, 8));
-
-    const baseDate = new Date(year, month, day);
-    const baseDayOfWeek = baseDate.getDay(); // 0(일) ~ 6(토)
-
-    // 일요일을 7로 조정하여 월(1)~일(7) 범위로 맞춤
-    const adjustedBaseDay = baseDayOfWeek === 0 ? 7 : baseDayOfWeek;
-
-    const diff = targetDayOfWeek - adjustedBaseDay;
-    const targetDate = new Date(baseDate);
-    targetDate.setDate(baseDate.getDate() + diff);
-
-    const y = targetDate.getFullYear();
-    const m = String(targetDate.getMonth() + 1).padStart(2, '0');
-    const d = String(targetDate.getDate()).padStart(2, '0');
-    return `${y}${m}${d}`;
-}
-
-/**
- * 4글자 강의실 패턴 (예: E311 -> 3학년 11반)을 변환하는 헬퍼 함수
- */
-function processClassroom(rawClrm) {
-    if (!rawClrm) return { location: '', isAuto: false };
-    if (rawClrm.length === 4 && /^.\d{3}$/.test(rawClrm)) {
-        const grade = rawClrm[1];
-        const classNum = parseInt(rawClrm.slice(2, 4), 10);
-        return { location: `${grade}학년 ${classNum}반`, isAuto: true };
-    }
-    return { location: '', isAuto: false };
-}
-
 export function Timetable() {
     const { showToast } = useToast();
 
     // ─── 시간표 그리드 상태 ───────────────────────────────────────────
     const [grid, setGrid] = useState(Array.from({ length: 7 }, () => Array(5).fill(null)));
+    const [userGrade, setUserGrade] = useState(null);
 
-    // ─── NEIS 교시별 개설 과목 ─────────────────────────────────────────
-    // byPeriod: { "1": [{subject, clrm}, ...], "2": [...], ... }
-    const [byPeriod, setByPeriod] = useState({});
-    const [neisDate, setNeisDate] = useState(getNearestSchoolDay());
+    // ─── DB 개설 과목 목록 ─────────────────────────────────────────
+    const [availableSubjects, setAvailableSubjects] = useState([]);
     const [neisLoading, setNeisLoading] = useState(false);
     const [neisError, setNeisError] = useState('');
 
@@ -96,7 +55,6 @@ export function Timetable() {
         location: '',
         memo: '',
         color: PRESET_COLORS[0],
-        isAutoLocation: false,
     });
 
     // ─── 변경사항 추적 ─────────────────────────────────────────────────
@@ -143,6 +101,7 @@ export function Timetable() {
         try {
             const res = await axios.get(`${API_BASE_URL}/timetable`, { withCredentials: true });
             const data = res.data.timetable || [];
+            setUserGrade(res.data.grade);
             const newGrid = Array.from({ length: 7 }, () => Array(5).fill(null));
             data.forEach(item => {
                 const pi = item.period - 1;
@@ -160,41 +119,31 @@ export function Timetable() {
 
     useEffect(() => { fetchTimetable(); }, [fetchTimetable]);
 
-    // ─── NEIS 개설 과목 불러오기 ──────────────────────────────────────
-    const fetchAvailable = useCallback(async (dateStr) => {
+    // ─── DB 과목 목록 불러오기 ──────────────────────────────────────
+    const fetchAvailable = useCallback(async () => {
         setNeisLoading(true);
         setNeisError('');
         try {
             const res = await axios.get(`${API_BASE_URL}/timetable/available`, {
-                params: { date: dateStr },
                 withCredentials: true,
             });
-            setByPeriod(res.data.by_period || {});
+            setAvailableSubjects(res.data.subjects || []);
         } catch (err) {
-            const msg = err.response?.data?.message || 'NEIS 과목 조회 실패';
+            const msg = err.response?.data?.message || '과목 조회 실패';
             setNeisError(msg);
-            setByPeriod({});
+            setAvailableSubjects([]);
         } finally {
             setNeisLoading(false);
         }
     }, []);
 
-    // 편집 모드 진입 시 NEIS 데이터 불러오기
+    // 편집 모드 진입 시 과목 데이터 불러오기
     useEffect(() => {
         if (isEditMode) {
-            fetchAvailable(neisDate);
+            fetchAvailable();
         }
-    }, [isEditMode, neisDate, fetchAvailable]);
+    }, [isEditMode, fetchAvailable]);
 
-    // ─── 요일 헤더 클릭 (편집 모드에서 날짜 연동) ─────────────────────
-    const handleHeaderClick = (dayIndex) => {
-        if (!isEditMode) return;
-        const dayOfWeek = dayIndex + 1;
-        const targetDate = getDateOfSpecificDay(neisDate, dayOfWeek);
-        if (neisDate !== targetDate) {
-            setNeisDate(targetDate);
-        }
-    };
 
     // ─── 셀 클릭 ──────────────────────────────────────────────────────
     const handleCellClick = (dayIndex, periodIndex) => {
@@ -202,27 +151,9 @@ export function Timetable() {
         const dayOfWeek = dayIndex + 1;
         const period = periodIndex + 1;
 
-        if (isEditMode) {
-            // 선택한 셀의 요일에 맞춰 기준 날짜 자동 변경
-            const targetDate = getDateOfSpecificDay(neisDate, dayOfWeek);
-            if (neisDate !== targetDate) {
-                setNeisDate(targetDate);
-            }
-
-            // 해당 교시의 개설 과목 목록
-            const options = byPeriod[String(period)] || [];
-            const firstOption = options[0];
-
+        if (isEditMode && userGrade !== 1) {
             let initialSubject = cellData?.subject_name || '';
             let initialLocation = cellData?.location || '';
-            let initialAuto = false;
-
-            if (!cellData && firstOption) {
-                initialSubject = firstOption.subject;
-                const processed = processClassroom(firstOption.clrm);
-                initialLocation = processed.location;
-                initialAuto = processed.isAuto;
-            }
 
             setEditModal({ open: true, day: dayOfWeek, period });
             setEditForm({
@@ -231,35 +162,24 @@ export function Timetable() {
                 location: initialLocation,
                 memo: cellData?.memo || '',
                 color: cellData?.color || PRESET_COLORS[0],
-                isAutoLocation: initialAuto,
             });
         } else if (cellData) {
             setDetailModal({ open: true, data: { ...cellData, dayString: DAYS[dayIndex] } });
         }
     };
 
-    // ─── 과목 선택 시 강의실 자동 채우기 ─────────────────────────────
+    // ─── 과목 선택 ─────────────────────────────
     const handleSubjectChange = (subject) => {
-        const options = byPeriod[String(editForm.period)] || [];
-        const found = options.find(o => o.subject === subject);
-        const processed = processClassroom(found?.clrm);
-
         setEditForm(prev => ({
             ...prev,
             subject_name: subject,
-            location: processed.location,
-            isAutoLocation: processed.isAuto,
         }));
     };
 
     // ─── 적용 저장 ────────────────────────────────────────────────────
     const handleEditSave = () => {
         if (!editForm.subject_name.trim()) {
-            showToast('알림', '과목을 선택해주세요.');
-            return;
-        }
-        if (!editForm.location.trim()) {
-            showToast('알림', '강의실(교실) 위치를 입력해주세요.');
+            showToast('알림', '과목을 선택/입력해주세요.');
             return;
         }
         const newGrid = grid.map(row => [...row]);
@@ -303,40 +223,16 @@ export function Timetable() {
         }
     };
 
-    // ─── NEIS 날짜 변경 핸들러 ────────────────────────────────────────
-    const handleDateChange = (e) => {
-        const raw = e.target.value; // "YYYY-MM-DD"
-        const ymd = raw.replace(/-/g, '');
-        setNeisDate(ymd);
-    };
-
-    const dateInputValue = neisDate
-        ? `${neisDate.slice(0, 4)}-${neisDate.slice(4, 6)}-${neisDate.slice(6, 8)}`
-        : '';
-
-    // ─── 현재 편집 중인 교시의 과목 목록 ─────────────────────────────
-    const currentOptions = editModal.open
-        ? (byPeriod[String(editModal.period)] || [])
-        : [];
-
-    // ─── 현재 기준 날짜와 일치하는 요일 인덱스 확인 ───────────────────
-    const getActiveDayIndex = () => {
-        if (!neisDate) return -1;
-        const year = parseInt(neisDate.slice(0, 4));
-        const month = parseInt(neisDate.slice(4, 6)) - 1;
-        const day = parseInt(neisDate.slice(6, 8));
-        const d = new Date(year, month, day);
-        const dow = d.getDay(); // 0(일) ~ 6(토)
-        return (dow === 0 || dow === 6) ? -1 : dow - 1; // 월(0)~금(4)
-    };
-    const activeDayIndex = getActiveDayIndex();
-
     // ─── 렌더링 ───────────────────────────────────────────────────────
     return (
         <div className="timetable-container has-bottom-nav">
             <div className="timetable-header-section">
                 <h1>내 시간표</h1>
-                {isEditMode ? (
+                {userGrade === 1 ? (
+                    <span style={{ fontSize: '0.8rem', color: '#666', background: '#eee', padding: '4px 8px', borderRadius: '12px' }}>
+                        1학년 자동 동기화
+                    </span>
+                ) : isEditMode ? (
                     <button className="btn-edit-toggle save-mode" onClick={handleSaveToServer}>
                         저장하기
                     </button>
@@ -347,16 +243,13 @@ export function Timetable() {
                 )}
             </div>
 
-
-
             <div className="timetable-card">
                 <div className="timetable-grid">
                     <div className="grid-header"></div>
                     {DAYS.map((day, i) => (
                         <div
                             key={i}
-                            className={`grid-header ${isEditMode ? 'clickable' : ''} ${isEditMode && i === activeDayIndex ? 'active-date' : ''}`}
-                            onClick={() => handleHeaderClick(i)}
+                            className={`grid-header ${isEditMode && userGrade !== 1 ? 'clickable' : ''}`}
                         >
                             {day}
                         </div>
@@ -369,7 +262,7 @@ export function Timetable() {
                                 <div
                                     key={dayIndex}
                                     id={`cell-p${periodIndex + 1}-d${dayIndex + 1}`}
-                                    className={`grid-cell ${isEditMode ? 'edit-mode' : ''}`}
+                                    className={`grid-cell ${isEditMode && userGrade !== 1 ? 'edit-mode' : ''}`}
                                     style={{ backgroundColor: cell ? cell.color : '#FFFFFF' }}
                                     onClick={() => handleCellClick(dayIndex, periodIndex)}
                                 >
@@ -379,7 +272,7 @@ export function Timetable() {
                                             <span className="cell-location">{cell.location}</span>
                                         </>
                                     )}
-                                    {isEditMode && !cell && (
+                                    {isEditMode && userGrade !== 1 && !cell && (
                                         <span className="cell-empty-hint">+</span>
                                     )}
                                 </div>
@@ -410,6 +303,8 @@ export function Timetable() {
                                 <div className="modal-detail-value">{detailModal.data.memo}</div>
                             </div>
                         )}
+                        
+                        {/* 1학년의 경우 DB에 저장된 색상/메모를 수정할 수 있도록 허용할 수도 있지만, 여기서는 간단히 닫기만 제공 */}
                         <div className="modal-actions">
                             <button className="btn-submit" onClick={() => setDetailModal({ open: false, data: null })}>
                                 닫기
@@ -420,7 +315,7 @@ export function Timetable() {
             )}
 
             {/* 편집 모달 */}
-            {editModal.open && (
+            {editModal.open && userGrade !== 1 && (
                 <div className="modal-overlay" onClick={() => setEditModal({ open: false, day: null, period: null })}>
                     <div className="modal-content" onClick={e => e.stopPropagation()}>
                         <h2 className="modal-title">
@@ -432,25 +327,23 @@ export function Timetable() {
                             <label className="form-label">과목 선택</label>
                             {neisLoading ? (
                                 <div className="neis-loading-hint">⏳ 과목 목록을 불러오는 중...</div>
-                            ) : currentOptions.length > 0 ? (
+                            ) : availableSubjects.length > 0 ? (
                                 <div className="subject-option-list">
-                                    {currentOptions
-                                        .filter((opt, index, self) => index === self.findIndex((t) => t.subject === opt.subject))
-                                        .map((opt, idx) => (
-                                            <div
-                                                key={idx}
-                                                id={`subject-opt-${idx}`}
-                                                className={`subject-option-chip ${editForm.subject_name === opt.subject ? 'selected' : ''}`}
-                                                onClick={() => handleSubjectChange(opt.subject)}
-                                            >
-                                                <span className="chip-subject">{opt.subject}</span>
-                                            </div>
-                                        ))}
+                                    {availableSubjects.map((opt, idx) => (
+                                        <div
+                                            key={idx}
+                                            id={`subject-opt-${idx}`}
+                                            className={`subject-option-chip ${editForm.subject_name === opt.subject ? 'selected' : ''}`}
+                                            onClick={() => handleSubjectChange(opt.subject)}
+                                        >
+                                            <span className="chip-subject">{opt.subject}</span>
+                                        </div>
+                                    ))}
                                 </div>
                             ) : (
                                 <div className="neis-empty-hint">
-                                    해당 교시에 개설된 과목이 없습니다.<br />
-                                    날짜를 바꿔 다시 조회해보세요.
+                                    등록된 과목이 없습니다.<br />
+                                    직접 입력하거나 관리자에게 문의하세요.
                                 </div>
                             )}
                         </div>
@@ -472,14 +365,14 @@ export function Timetable() {
                         {/* 강의실 입력란 */}
                         <div className="form-group">
                             <label className="form-label">
-                                강의실(위치) <span style={{ color: '#E93E4F' }}>*</span> <span style={{ fontSize: '0.7rem', color: '#999', marginLeft: '4px', fontWeight: 'normal' }}>(수정이 필요할 수도 있습니다)</span>
+                                강의실(위치) <span style={{ fontSize: '0.7rem', color: '#999', marginLeft: '4px', fontWeight: 'normal' }}>(선택사항)</span>
                             </label>
                             <input
                                 type="text"
                                 className="modal-input"
                                 placeholder="예: 3학년 11반, 음악실"
                                 value={editForm.location}
-                                onChange={e => setEditForm({ ...editForm, location: e.target.value, isAutoLocation: false })}
+                                onChange={e => setEditForm({ ...editForm, location: e.target.value })}
                             />
                         </div>
 

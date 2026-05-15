@@ -547,7 +547,154 @@ function DeletedLogsTab() {
   );
 }
 
-// 탭 6: 알림 설정
+// 탭 6: 과목 관리 (새 탭)
+function SubjectsTab() {
+  const [subjects, setSubjects] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [syncLoading, setSyncLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [newGrade, setNewGrade] = useState("1");
+  const [newSubject, setNewSubject] = useState("");
+  const { showToast } = useToast();
+
+  const fetchSubjects = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const data = await apiFetch("/admin/subjects");
+      setSubjects(data.data);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSubjects();
+  }, []);
+
+  const handleAdd = async () => {
+    if (!newSubject.trim()) {
+      showToast("과목명을 입력해주세요.");
+      return;
+    }
+    setLoading(true);
+    try {
+      await apiFetch("/admin/subjects", {
+        method: "POST",
+        body: JSON.stringify({ grade: parseInt(newGrade), subject_name: newSubject.trim() }),
+      });
+      setNewSubject("");
+      showToast("과목이 추가되었습니다.");
+      fetchSubjects();
+    } catch (e) {
+      showToast(e.message);
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (subjectId) => {
+    if (!window.confirm("정말 이 과목을 삭제하시겠습니까?")) return;
+    setLoading(true);
+    try {
+      await apiFetch(`/admin/subjects/${subjectId}`, {
+        method: "DELETE",
+      });
+      showToast("과목이 삭제되었습니다.");
+      fetchSubjects();
+    } catch (e) {
+      showToast(e.message);
+      setLoading(false);
+    }
+  };
+
+  const handleSyncNeis = async () => {
+    if (!window.confirm("NEIS에서 1, 2, 3학년 시간표 과목을 가져오시겠습니까?\n이 작업은 다소 시간이 걸릴 수 있습니다.")) return;
+    setSyncLoading(true);
+    try {
+      const data = await apiFetch("/admin/subjects/sync-neis", { method: "POST" });
+      showToast(data.message);
+      fetchSubjects();
+    } catch (e) {
+      showToast(e.message);
+    } finally {
+      setSyncLoading(false);
+    }
+  };
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <p className="admin-section-title" style={{ margin: 0 }}>과목 관리</p>
+        <LoadingBtn loading={syncLoading} onClick={handleSyncNeis} className="admin-btn--primary" style={{ padding: '6px 12px', fontSize: '13px', backgroundColor: '#e91e63' }}>
+          나이스 API에서 가져오기
+        </LoadingBtn>
+      </div>
+      <div className="admin-card" style={{ marginTop: '12px' }}>
+        {error && <div className="admin-result admin-result--error">⚠️ {error}</div>}
+        
+        <div className="admin-input-row" style={{ marginBottom: "16px" }}>
+          <select 
+            className="admin-input" 
+            style={{ width: '80px', flexShrink: 0 }}
+            value={newGrade}
+            onChange={(e) => setNewGrade(e.target.value)}
+          >
+            <option value="1">1학년</option>
+            <option value="2">2학년</option>
+            <option value="3">3학년</option>
+          </select>
+          <input
+            className="admin-input"
+            placeholder="새 과목명 추가"
+            value={newSubject}
+            onChange={(e) => setNewSubject(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+          />
+          <LoadingBtn
+            loading={loading}
+            onClick={handleAdd}
+            className="admin-btn--primary"
+          >
+            추가
+          </LoadingBtn>
+        </div>
+
+        {subjects.length === 0 ? (
+          <div className="admin-empty">등록된 과목이 없습니다.</div>
+        ) : (
+          <div className="admin-history-list">
+            {["1", "2", "3"].map(grade => {
+              const gradeSubjects = subjects.filter(s => s.grade == grade);
+              if (gradeSubjects.length === 0) return null;
+              return (
+                <div key={grade} style={{ marginBottom: '16px' }}>
+                  <h3 style={{ fontSize: '14px', marginBottom: '8px', color: '#555' }}>{grade}학년 과목</h3>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    {gradeSubjects.map(sub => (
+                      <div key={sub.subject_id} style={{ display: 'flex', alignItems: 'center', background: '#f5f5f5', padding: '6px 10px', borderRadius: '16px', fontSize: '13px' }}>
+                        <span>{sub.subject_name}</span>
+                        <button 
+                          onClick={() => handleDelete(sub.subject_id)}
+                          style={{ background: 'none', border: 'none', marginLeft: '6px', cursor: 'pointer', color: '#e57373', fontSize: '12px' }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// 탭 7: 알림 설정
 function MealNotificationSettingTab() {
   const [notiEnabled, setNotiEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -722,7 +869,8 @@ const ADMIN_TABS = [
   { id: "history", label: "📋 수정 이력" },
   { id: "push", label: "📣 푸시 알림" },
   { id: "trace", label: "🔍 작성자 추적" },
-  { id: "deleted", label: "🗑️ 삭제 로그" }
+  { id: "deleted", label: "🗑️ 삭제 로그" },
+  { id: "subjects", label: "📚 과목 관리" }
 ];
 
 export default function AdminPage() {
@@ -785,12 +933,13 @@ export default function AdminPage() {
               </button>
             </div>
             {/* 어드민 탭 */}
-            <div className="admin-tabs">
+            <div className="admin-tabs" style={{ display: 'flex', overflowX: 'auto', paddingBottom: '8px' }}>
               {ADMIN_TABS.map((tab) => (
                 <button
                   key={tab.id}
                   className={`admin-tab${activeAdminTab === tab.id ? " admin-tab--active" : ""}`}
                   onClick={() => setActiveAdminTab(tab.id)}
+                  style={{ whiteSpace: 'nowrap', flexShrink: 0 }}
                 >
                   {tab.label}
                 </button>
@@ -801,6 +950,7 @@ export default function AdminPage() {
             {activeAdminTab === "push" && <PushNotificationTab />}
             {activeAdminTab === "trace" && <TraceAuthorTab />}
             {activeAdminTab === "deleted" && <DeletedLogsTab />}
+            {activeAdminTab === "subjects" && <SubjectsTab />}
           </>
         )}
       </main>

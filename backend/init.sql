@@ -83,6 +83,14 @@ CREATE TABLE IF NOT EXISTS fcm_tokens (
     FOREIGN KEY (user_id) REFERENCES Students (student_id) ON DELETE CASCADE
 );
 
+-- 시간표 과목 테이블
+CREATE TABLE IF NOT EXISTS Subjects (
+    subject_id INT AUTO_INCREMENT PRIMARY KEY,
+    grade INT NOT NULL,
+    subject_name VARCHAR(100) NOT NULL,
+    UNIQUE KEY uq_grade_subject (grade, subject_name)
+);
+
 -- 시간표 테이블
 CREATE TABLE IF NOT EXISTS Timetable (
     timetable_id INT AUTO_INCREMENT PRIMARY KEY,

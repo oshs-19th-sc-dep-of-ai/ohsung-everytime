@@ -341,3 +341,108 @@ def admin_deleted_logs():
         "status": "success",
         "data": logs
     })
+
+# ────────────────────────────────────────────
+# 7. 과목 관리
+# ────────────────────────────────────────────
+@admin_bp.route('/subjects', methods=['GET'])
+def get_admin_subjects():
+    if not eta_admin():
+        return jsonify({"status": "error", "message": "모더레이터 권한이 필요합니다."}), 403
+
+    db = DatabaseManager()
+    rows = db.query("SELECT subject_id, grade, subject_name FROM Subjects ORDER BY grade, subject_name").result
+    subjects = [{"subject_id": r[0], "grade": r[1], "subject_name": r[2]} for r in rows]
+    return jsonify({"status": "success", "data": subjects})
+
+@admin_bp.route('/subjects', methods=['POST'])
+def add_admin_subject():
+    if not eta_admin():
+        return jsonify({"status": "error", "message": "모더레이터 권한이 필요합니다."}), 403
+
+    data = request.get_json(silent=True) or {}
+    grade = data.get('grade')
+    subject_name = data.get('subject_name')
+
+    if not grade or not subject_name:
+        return jsonify({"status": "error", "message": "학년과 과목명을 모두 입력해주세요."}), 400
+
+    db = DatabaseManager()
+    try:
+        db.query("INSERT INTO Subjects (grade, subject_name) VALUES (%(grade)s, %(subject_name)s)", grade=grade, subject_name=subject_name)
+        db.commit()
+        return jsonify({"status": "success", "message": "과목이 추가되었습니다."})
+    except Exception as e:
+        if 'Duplicate' in str(e) or '1062' in str(e):
+            return jsonify({"status": "error", "message": "이미 존재하는 과목입니다."}), 400
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@admin_bp.route('/subjects/<int:subject_id>', methods=['DELETE'])
+def delete_admin_subject(subject_id):
+    if not eta_admin():
+        return jsonify({"status": "error", "message": "모더레이터 권한이 필요합니다."}), 403
+
+    db = DatabaseManager()
+    db.query("DELETE FROM Subjects WHERE subject_id = %(subject_id)s", subject_id=subject_id)
+    db.commit()
+    return jsonify({"status": "success", "message": "과목이 삭제되었습니다."})
+
+@admin_bp.route('/subjects/sync-neis', methods=['POST'])
+def sync_neis_subjects():
+    if not eta_admin():
+        return jsonify({"status": "error", "message": "모더레이터 권한이 필요합니다."}), 403
+
+    from ..utils.config_util import ConfigManager as Config
+    import requests as http_requests
+    from datetime import datetime, timedelta
+
+    cfg = Config().get()["NICEAPI"]
+    
+    db = DatabaseManager()
+
+    # 기준일을 오늘로 잡고, 이번 주 월요일부터 금요일까지 5일치 데이터를 모두 수집
+    today = datetime.now()
+    monday = today - timedelta(days=today.weekday())
+    dates_to_fetch = [(monday + timedelta(days=i)).strftime("%Y%m%d") for i in range(5)]
+    
+    for date_str in dates_to_fetch:
+        month = int(date_str[4:6])
+        sem = "1" if month <= 8 else "2"
+        
+        for grade in ["1", "2", "3"]:
+            params = {
+                "KEY": cfg["KEY"],
+                "Type": "json",
+                "pIndex": 1,
+                "pSize": 1000,
+                "ATPT_OFCDC_SC_CODE": cfg["SCHULSC"],
+                "SD_SCHUL_CODE": cfg["SCHULC"],
+                "AY": date_str[:4],
+                "SEM": sem,
+                "ALL_TI_YMD": date_str,
+                "GRADE": grade,
+            }
+            
+            try:
+                resp = http_requests.get(cfg["TIMETABLE"], params=params, timeout=10)
+                if resp.status_code != 200:
+                    continue
+                data = resp.json()
+                rows = data.get("hisTimetable", [{}])[1].get("row", [])
+                
+                subjects = set()
+                for row in rows:
+                    if row.get("ITRT_CNTNT"):
+                        subjects.add(row["ITRT_CNTNT"])
+                
+                for subject_name in subjects:
+                    try:
+                        db.query("INSERT IGNORE INTO Subjects (grade, subject_name) VALUES (%(grade)s, %(subject_name)s)", grade=int(grade), subject_name=subject_name)
+                    except:
+                        pass
+            except Exception as e:
+                print(f"[NEIS Sync Error] Date {date_str} Grade {grade}: {e}")
+                continue
+
+    db.commit()
+    return jsonify({"status": "success", "message": "NEIS에서 5일간의 모든 과목 목록을 동기화했습니다."})

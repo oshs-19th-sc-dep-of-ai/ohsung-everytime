@@ -1,6 +1,7 @@
 from flask import Blueprint, request, session, jsonify
 from ..utils.database_util import DatabaseManager
 from ..utils.config_util import ConfigManager as Config
+from ..utils.student_util import get_grade, get_class
 import requests as http_requests
 from datetime import datetime, timedelta
 
@@ -79,8 +80,8 @@ def get_timetable():
 
     db = DatabaseManager()
     
-    # 시간표 데이터 조회
-    timetable_data = db.fetch_all(
+    # 1. DB에서 기존 시간표 조회 (색상/메모 등)
+    db_timetable = db.fetch_all(
         """
         SELECT timetable_id, day_of_week, period, subject_name, location, memo, color 
         FROM Timetable 
@@ -90,9 +91,86 @@ def get_timetable():
         student_id=student_id
     )
 
+    grade_res = db.query("SELECT grade FROM Students WHERE student_id = %(student_id)s", student_id=student_id).result
+    grade = grade_res[0][0] if grade_res else 1
+    
+    class_nm = get_class(student_id)
+
+    # 1학년인 경우 나이스 API에서 이번 주 시간표를 가져와 병합
+    if grade == 1:
+        cfg = Config().get()["NICEAPI"]
+        today = datetime.now()
+        # 주말이면 다음 주 월요일 기준으로 시간표 로드
+        if today.weekday() > 4:
+            today += timedelta(days=(7 - today.weekday()))
+            
+        monday = today - timedelta(days=today.weekday())
+        friday = monday + timedelta(days=4)
+        
+        params = {
+            "KEY": cfg["KEY"],
+            "Type": "json",
+            "pIndex": 1,
+            "pSize": 200,
+            "ATPT_OFCDC_SC_CODE": cfg["SCHULSC"],
+            "SD_SCHUL_CODE": cfg["SCHULC"],
+            "AY": monday.strftime("%Y"),
+            "SEM": _get_semester(monday.strftime("%Y%m%d")),
+            "TI_FROM_YMD": monday.strftime("%Y%m%d"),
+            "TI_TO_YMD": friday.strftime("%Y%m%d"),
+            "GRADE": str(grade),
+            "CLASS_NM": str(class_nm)
+        }
+
+        neis_rows = []
+        try:
+            resp = http_requests.get(cfg["TIMETABLE"], params=params, timeout=10)
+            if resp.status_code == 200:
+                data = resp.json()
+                if "hisTimetable" in data:
+                    neis_rows = data["hisTimetable"][1].get("row", [])
+        except Exception as e:
+            print(f"[NEIS] 1학년 자동 시간표 API 오류: {e}")
+
+        # DB 데이터를 dict로 변환하여 (요일, 교시)를 키로 쉽게 접근할 수 있게 함
+        db_map = {(row['day_of_week'], row['period']): row for row in db_timetable}
+        
+        merged_timetable = []
+        
+        # NEIS 데이터를 바탕으로 시간표 구성
+        for row in neis_rows:
+            date_str = row["ALL_TI_YMD"] # YYYYMMDD
+            period_num = int(row["PERIO"])
+            subject_name = row.get("ITRT_CNTNT", "").strip()
+            if not subject_name:
+                continue
+                
+            date_obj = datetime.strptime(date_str, "%Y%m%d")
+            day_of_week = date_obj.weekday() + 1 # 1=월, 2=화, 3=수, 4=목, 5=금
+            
+            if day_of_week > 5:
+                continue
+
+            db_entry = db_map.get((day_of_week, period_num))
+            
+            merged_timetable.append({
+                "timetable_id": db_entry['timetable_id'] if db_entry else None,
+                "day_of_week": day_of_week,
+                "period": period_num,
+                "subject_name": subject_name,
+                "location": f"1학년 {class_nm}반",
+                "memo": db_entry['memo'] if db_entry else None,
+                "color": db_entry['color'] if db_entry else '#EAF1FF'
+            })
+            
+        timetable_data = merged_timetable
+    else:
+        timetable_data = db_timetable
+
     return jsonify({
         "status": "success",
-        "timetable": timetable_data
+        "timetable": timetable_data,
+        "grade": grade
     }), 200
 
 @timetable_bp.route('', methods=['PUT'])
@@ -159,52 +237,32 @@ def update_timetable():
         return jsonify({"status": "error", "message": "시간표 저장 중 오류가 발생했습니다."}), 500
 
 
+
 @timetable_bp.route('/available', methods=['GET'])
 def get_available_subjects():
     """
-    NEIS API를 통해 특정 날짜(3학년)의 교시별 개설 과목 목록을 반환합니다.
-
-    Query params:
-      - date (optional): YYYYMMDD 형식의 날짜. 미입력 시 오늘(주말이면 다음 월요일) 기준.
-
-    Response:
-      {
-        "status": "success",
-        "date": "20260513",
-        "by_period": {
-          "1": [{"subject": "화법과 작문", "clrm": "E301"}, ...],
-          "2": [...],
-          ...
-        }
-      }
+    DB에 저장된 사용자의 학년에 맞는 과목 목록을 반환합니다.
     """
-    if not session.get('student_id'):
+    student_id = session.get('student_id')
+    if not student_id:
         return jsonify({"status": "error", "message": "로그인이 필요합니다."}), 401
 
-    date_str = request.args.get('date', '').strip()
-
-    # 날짜 유효성 검사 (YYYYMMDD, 8자리 숫자)
-    if date_str:
-        if not date_str.isdigit() or len(date_str) != 8:
-            return jsonify({"status": "error", "message": "날짜 형식은 YYYYMMDD여야 합니다."}), 400
-    else:
-        date_str = _nearest_school_day()
-
-    by_period = _get_neis_timetable(date_str)
-
-    if by_period is None:
-        return jsonify({"status": "error", "message": "NEIS API 조회에 실패했습니다."}), 502
-
-    if not by_period:
-        return jsonify({
-            "status": "success",
-            "date": date_str,
-            "by_period": {},
-            "message": "해당 날짜에 3학년 시간표 데이터가 없습니다."
-        }), 200
+    db = DatabaseManager()
+    
+    # 학생 학년 조회
+    student = db.query("SELECT grade FROM Students WHERE student_id = %(student_id)s", student_id=student_id).result
+    if not student:
+        return jsonify({"status": "error", "message": "학생 정보를 찾을 수 없습니다."}), 404
+        
+    grade = student[0][0]
+    
+    # 해당 학년의 과목 조회
+    subjects = db.query("SELECT subject_name FROM Subjects WHERE grade = %(grade)s ORDER BY subject_name", grade=grade).result
+    
+    subject_list = [{"subject": row[0]} for row in subjects]
 
     return jsonify({
         "status": "success",
-        "date": date_str,
-        "by_period": by_period
+        "grade": grade,
+        "subjects": subject_list
     }), 200
