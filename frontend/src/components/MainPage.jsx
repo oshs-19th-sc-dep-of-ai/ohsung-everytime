@@ -238,7 +238,7 @@ export function MainPage() {
         <section className="menu-card board-section" onClick={goPostList}>
           <div className="board-header">
             <div className="board-title-group">
-              <h2>자유 게시판</h2>
+              <h2>전체 게시판</h2>
             </div>
             <div className="go-icon">목록 보러가기 ➜</div>
           </div>
