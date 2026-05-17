@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
 import { useToast } from '../contexts/ToastContext.jsx';
@@ -16,18 +16,6 @@ const PRESET_COLORS = [
     '#F0E6FF', // 연보라
     '#FEE4D6'  // 연주황
 ];
-
-// 오늘 날짜 → YYYYMMDD 문자열 (주말이면 다음 월요일)
-function getNearestSchoolDay() {
-    const today = new Date();
-    const day = today.getDay(); // 0=일, 6=토
-    if (day === 0) today.setDate(today.getDate() + 1);
-    if (day === 6) today.setDate(today.getDate() + 2);
-    const y = today.getFullYear();
-    const m = String(today.getMonth() + 1).padStart(2, '0');
-    const d = String(today.getDate()).padStart(2, '0');
-    return `${y}${m}${d}`;
-}
 
 export function Timetable() {
     const { showToast } = useToast();
@@ -59,6 +47,71 @@ export function Timetable() {
 
     // ─── 변경사항 추적 ─────────────────────────────────────────────────
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [saveStatus, setSaveStatus] = useState('idle');
+    const latestGridRef = useRef(grid);
+    const changeVersionRef = useRef(0);
+    const savedVersionRef = useRef(0);
+    const isSavingRef = useRef(false);
+    const saveNowRef = useRef(null);
+
+    const buildPayload = useCallback((gridSnapshot) => {
+        const payload = [];
+        gridSnapshot.forEach(row => row.forEach(cell => { if (cell) payload.push(cell); }));
+        return payload;
+    }, []);
+
+    const runAutoSave = useCallback(async () => {
+        if (isSavingRef.current) return;
+
+        const versionToSave = changeVersionRef.current;
+        if (versionToSave === savedVersionRef.current) return;
+
+        const gridToSave = latestGridRef.current;
+        isSavingRef.current = true;
+        setSaveStatus('saving');
+
+        let savedThisAttempt = false;
+        try {
+            await axios.put(
+                `${API_BASE_URL}/timetable`,
+                { timetable: buildPayload(gridToSave) },
+                { withCredentials: true }
+            );
+            savedThisAttempt = true;
+            savedVersionRef.current = versionToSave;
+
+            if (changeVersionRef.current === versionToSave) {
+                setHasUnsavedChanges(false);
+                setSaveStatus('saved');
+            }
+        } catch (err) {
+            console.error('시간표 자동 저장 실패:', err);
+            if (changeVersionRef.current === versionToSave) {
+                setHasUnsavedChanges(true);
+                setSaveStatus('error');
+                showToast('오류', '시간표 자동 저장에 실패했습니다.');
+            }
+        } finally {
+            isSavingRef.current = false;
+            const hasNewerChanges = changeVersionRef.current !== versionToSave;
+            if ((savedThisAttempt || hasNewerChanges) && changeVersionRef.current !== savedVersionRef.current) {
+                window.setTimeout(() => saveNowRef.current?.(), 0);
+            }
+        }
+    }, [buildPayload, showToast]);
+
+    useEffect(() => {
+        saveNowRef.current = runAutoSave;
+    }, [runAutoSave]);
+
+    const applyGridChange = useCallback((nextGrid) => {
+        latestGridRef.current = nextGrid;
+        changeVersionRef.current += 1;
+        setGrid(nextGrid);
+        setHasUnsavedChanges(true);
+        setSaveStatus('saving');
+        window.setTimeout(() => saveNowRef.current?.(), 0);
+    }, []);
 
     // 저장하지 않고 이탈 방지 (새로고침, 탭 닫기)
     useEffect(() => {
@@ -110,8 +163,12 @@ export function Timetable() {
                     newGrid[pi][di] = item;
                 }
             });
+            latestGridRef.current = newGrid;
+            changeVersionRef.current = 0;
+            savedVersionRef.current = 0;
             setGrid(newGrid);
             setHasUnsavedChanges(false);
+            setSaveStatus('idle');
         } catch (err) {
             console.error('시간표 불러오기 실패:', err);
         }
@@ -193,8 +250,7 @@ export function Timetable() {
             memo: editForm.memo,
             color: editForm.color,
         };
-        setGrid(newGrid);
-        setHasUnsavedChanges(true);
+        applyGridChange(newGrid);
         setEditModal({ open: false, day: null, period: null });
     };
 
@@ -202,25 +258,15 @@ export function Timetable() {
     const handleCellDelete = () => {
         const newGrid = grid.map(row => [...row]);
         newGrid[editModal.period - 1][editModal.day - 1] = null;
-        setGrid(newGrid);
-        setHasUnsavedChanges(true);
+        applyGridChange(newGrid);
         setEditModal({ open: false, day: null, period: null });
     };
 
-    // ─── 서버에 저장 ──────────────────────────────────────────────────
-    const handleSaveToServer = async () => {
-        const payload = [];
-        grid.forEach(row => row.forEach(cell => { if (cell) payload.push(cell); }));
-        try {
-            await axios.put(`${API_BASE_URL}/timetable`, { timetable: payload }, { withCredentials: true });
-            showToast('성공', '시간표가 성공적으로 저장되었습니다!');
-            setHasUnsavedChanges(false);
-            setIsEditMode(false);
-            fetchTimetable();
-        } catch (err) {
-            console.error('시간표 저장 실패:', err);
-            showToast('오류', '시간표 저장에 실패했습니다.');
-        }
+    const getAutoSaveLabel = () => {
+        if (saveStatus === 'saving') return '저장 중...';
+        if (saveStatus === 'saved') return '저장됨';
+        if (saveStatus === 'error') return '자동 저장 실패';
+        return '자동 저장';
     };
 
     // ─── 렌더링 ───────────────────────────────────────────────────────
@@ -233,9 +279,14 @@ export function Timetable() {
                         1학년 자동 동기화
                     </span>
                 ) : isEditMode ? (
-                    <button className="btn-edit-toggle save-mode" onClick={handleSaveToServer}>
-                        저장하기
-                    </button>
+                    <div className="timetable-header-actions">
+                        <span className={`autosave-status ${saveStatus}`}>
+                            {getAutoSaveLabel()}
+                        </span>
+                        <button className="btn-edit-toggle save-mode" onClick={() => setIsEditMode(false)}>
+                            완료
+                        </button>
+                    </div>
                 ) : (
                     <button className="btn-edit-toggle" onClick={() => setIsEditMode(true)}>
                         시간표 수정
@@ -325,6 +376,11 @@ export function Timetable() {
                         {/* 과목 선택 */}
                         <div className="form-group">
                             <label className="form-label">과목 선택</label>
+                            {neisError && (
+                                <div className="neis-error-badge timetable-subject-error">
+                                    {neisError}
+                                </div>
+                            )}
                             {neisLoading ? (
                                 <div className="neis-loading-hint">⏳ 과목 목록을 불러오는 중...</div>
                             ) : availableSubjects.length > 0 ? (

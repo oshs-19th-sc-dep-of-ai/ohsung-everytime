@@ -47,6 +47,31 @@
     background-color: #4F46E5;
 }
 
+.timetable-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.autosave-status {
+    font-size: 12px;
+    font-weight: 600;
+    color: #6B7684;
+    white-space: nowrap;
+}
+
+.autosave-status.saving {
+    color: #3182F6;
+}
+
+.autosave-status.saved {
+    color: #1DA462;
+}
+
+.autosave-status.error {
+    color: #E93E4F;
+}
+
 /* =========================================
    Timetable Grid (여백 제거 및 일체형 디자인)
 ========================================= */
@@ -398,6 +423,11 @@
     border-radius: 8px;
     padding: 3px 8px;
     font-weight: 600;
+}
+
+.timetable-subject-error {
+    display: inline-block;
+    margin-bottom: 8px;
 }
 
 .neis-ok-badge {
