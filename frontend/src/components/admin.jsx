@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useToast } from "../contexts/ToastContext.jsx";
 import { motion } from "framer-motion";
 import "./admin.css";
 import { API_BASE_URL } from "../config";
+import { useNetwork } from '../contexts/NetworkContext.jsx';
 
 // ───── 공통 fetch 헬퍼 ─────
 const apiFetch = async (url, options = {}) => {
@@ -862,7 +863,287 @@ function TimetableNotificationSettingTab() {
   );
 }
 
-import { useNetwork } from '../contexts/NetworkContext.jsx';
+// ───── 문의하기 (Inquiries) 컴포넌트 ─────
+
+function InquiryList({ onSelect }) {
+  const [inquiries, setInquiries] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [showNewForm, setShowNewForm] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newContent, setNewContent] = useState("");
+  
+  const isMod = localStorage.getItem("eta_admin") === "true";
+  const { showToast } = useToast();
+
+  const fetchInquiries = async () => {
+    setLoading(true);
+    try {
+      const data = await apiFetch("/inquiries");
+      setInquiries(data.data);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchInquiries();
+  }, []);
+
+  const handleCreate = async () => {
+    if (!newTitle.trim() || !newContent.trim()) {
+      showToast("제목과 내용을 모두 입력해주세요.");
+      return;
+    }
+    try {
+      setLoading(true);
+      await apiFetch("/inquiries", {
+        method: "POST",
+        body: JSON.stringify({ title: newTitle, content: newContent })
+      });
+      setNewTitle("");
+      setNewContent("");
+      setShowNewForm(false);
+      showToast("문의가 접수되었습니다.");
+      fetchInquiries();
+    } catch (e) {
+      showToast(e.message);
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ marginBottom: '24px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <p className="admin-section-title" style={{ margin: 0 }}>1:1 문의하기</p>
+        {!isMod && (
+          <button 
+            className="admin-btn--primary" 
+            style={{ padding: '6px 12px', fontSize: '13px', borderRadius: '4px', border: 'none', cursor: 'pointer' }}
+            onClick={() => setShowNewForm(!showNewForm)}
+          >
+            {showNewForm ? "취소" : "새 문의 작성"}
+          </button>
+        )}
+      </div>
+
+      <div className="admin-card" style={{ marginTop: '12px' }}>
+        {showNewForm && !isMod && (
+          <div style={{ marginBottom: '16px', paddingBottom: '16px', borderBottom: '1px solid #eee' }}>
+            <input
+              className="admin-input"
+              placeholder="제목을 입력하세요"
+              value={newTitle}
+              onChange={e => setNewTitle(e.target.value)}
+              style={{ marginBottom: '8px' }}
+            />
+            <textarea
+              className="admin-input admin-textarea"
+              placeholder="문의 내용을 입력하세요"
+              value={newContent}
+              onChange={e => setNewContent(e.target.value)}
+              style={{ minHeight: '80px' }}
+            />
+            <div style={{ textAlign: 'right', marginTop: '8px' }}>
+              <LoadingBtn loading={loading} onClick={handleCreate} className="admin-btn--primary">
+                등록하기
+              </LoadingBtn>
+            </div>
+          </div>
+        )}
+
+        {error && <div className="admin-result admin-result--error">⚠️ {error}</div>}
+        
+        {loading && inquiries.length === 0 ? (
+          <div className="admin-empty">로딩 중...</div>
+        ) : inquiries.length === 0 ? (
+          <div className="admin-empty">등록된 문의가 없습니다.</div>
+        ) : (
+          <div className="admin-history-list">
+            {inquiries.map(inq => (
+              <div 
+                key={inq.inquiry_id} 
+                className="admin-history-item" 
+                style={{ cursor: 'pointer', transition: 'background 0.2s' }}
+                onClick={() => onSelect(inq.inquiry_id)}
+                onMouseOver={e => e.currentTarget.style.backgroundColor = '#f9f9f9'}
+                onMouseOut={e => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <span style={{ fontWeight: 'bold', fontSize: '14px', color: '#333' }}>
+                    {isMod && <span style={{ color: '#2196f3', marginRight: '4px' }}>[{inq.student_name}]</span>}
+                    {inq.title}
+                  </span>
+                  <span className="admin-history-item__time">
+                    {inq.status === 'pending' ? <span style={{ color: '#f44336', marginRight: '6px' }}>대기중</span> : 
+                     inq.status === 'answered' ? <span style={{ color: '#4caf50', marginRight: '6px' }}>답변완료</span> :
+                     <span style={{ color: '#9e9e9e', marginRight: '6px' }}>해결됨</span>}
+                    🕐 {inq.updated_at}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function InquiryChat({ inquiryId, onBack }) {
+  const [inquiry, setInquiry] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [newMessage, setNewMessage] = useState("");
+  const [sending, setSending] = useState(false);
+  
+  const isMod = localStorage.getItem("eta_admin") === "true";
+  const { showToast } = useToast();
+  const chatEndRef = useRef(null);
+
+  const fetchMessages = async () => {
+    try {
+      const data = await apiFetch(`/inquiries/${inquiryId}/messages`);
+      setInquiry(data.data);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMessages();
+  }, [inquiryId]);
+
+  useEffect(() => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [inquiry]);
+
+  const handleSend = async () => {
+    if (!newMessage.trim()) return;
+    setSending(true);
+    try {
+      await apiFetch(`/inquiries/${inquiryId}/messages`, {
+        method: "POST",
+        body: JSON.stringify({ content: newMessage })
+      });
+      setNewMessage("");
+      fetchMessages();
+    } catch (e) {
+      showToast(e.message);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  if (loading) return <div className="admin-card"><div className="admin-empty">로딩 중...</div></div>;
+  if (error) return <div className="admin-card"><div className="admin-result admin-result--error">⚠️ {error}</div><button className="admin-btn--secondary" onClick={onBack}>뒤로가기</button></div>;
+  if (!inquiry) return null;
+
+  return (
+    <div style={{ marginBottom: '24px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px', gap: '12px' }}>
+        <button 
+          className="admin-btn--secondary" 
+          onClick={onBack}
+          style={{ padding: '6px 10px', fontSize: '13px' }}
+        >
+          ← 뒤로
+        </button>
+        <p className="admin-section-title" style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {inquiry.title}
+        </p>
+      </div>
+
+      <div className="admin-card" style={{ display: 'flex', flexDirection: 'column', height: '400px', padding: '0' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', backgroundColor: '#f4f5f7' }}>
+          {inquiry.messages.map(msg => {
+            // isMine: 내가 보낸 메시지인지 확인. 
+            // isMod(관리자)면 sender_type === 'admin'이 내 메시지
+            // 일반유저면 sender_type === 'user'가 내 메시지
+            const isMine = isMod ? (msg.sender_type === 'admin') : (msg.sender_type === 'user');
+            
+            return (
+              <div key={msg.message_id} style={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start' }}>
+                {!isMine && (
+                  <span style={{ fontSize: '11px', color: '#666', marginBottom: '4px', marginLeft: '4px' }}>
+                    {msg.sender_type === 'admin' ? '관리자' : '사용자'}
+                  </span>
+                )}
+                <div style={{
+                  maxWidth: '75%',
+                  padding: '10px 14px',
+                  borderRadius: '16px',
+                  borderTopRightRadius: isMine ? '4px' : '16px',
+                  borderTopLeftRadius: !isMine ? '4px' : '16px',
+                  backgroundColor: isMine ? '#6c63ff' : '#ffffff',
+                  color: isMine ? '#ffffff' : '#333333',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                  fontSize: '14px',
+                  lineHeight: '1.4',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word'
+                }}>
+                  {msg.content}
+                </div>
+                <span style={{ fontSize: '10px', color: '#999', marginTop: '4px', marginRight: isMine ? '4px' : '0', marginLeft: !isMine ? '4px' : '0' }}>
+                  {msg.created_at}
+                </span>
+              </div>
+            );
+          })}
+          <div ref={chatEndRef} />
+        </div>
+
+        <div style={{ padding: '12px', borderTop: '1px solid #eee', display: 'flex', gap: '8px', backgroundColor: '#fff' }}>
+          <textarea
+            value={newMessage}
+            onChange={e => setNewMessage(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
+            placeholder="메시지를 입력하세요 (Shift+Enter로 줄바꿈)"
+            style={{ 
+              flex: 1, 
+              resize: 'none', 
+              padding: '10px', 
+              borderRadius: '8px', 
+              border: '1px solid #ddd',
+              outline: 'none',
+              fontFamily: 'inherit',
+              height: '40px'
+            }}
+          />
+          <LoadingBtn 
+            loading={sending} 
+            onClick={handleSend} 
+            className="admin-btn--primary"
+            style={{ padding: '0 20px', borderRadius: '8px' }}
+          >
+            전송
+          </LoadingBtn>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InquirySection() {
+  const [activeInquiryId, setActiveInquiryId] = useState(null);
+
+  if (activeInquiryId) {
+    return <InquiryChat inquiryId={activeInquiryId} onBack={() => setActiveInquiryId(null)} />;
+  }
+  return <InquiryList onSelect={setActiveInquiryId} />;
+}
 
 // 메인 AdminPage (설정 페이지)
 const ADMIN_TABS = [
@@ -904,6 +1185,7 @@ export default function AdminPage() {
       <main className="admin-body" style={{ opacity: isOnline ? 1 : 0.5, pointerEvents: isOnline ? 'auto' : 'none' }}>
         {!showAdminPanel ? (
           <>
+            <InquirySection />
             <ChangePasswordTab />
             <MealNotificationSettingTab />
             <TimetableNotificationSettingTab />

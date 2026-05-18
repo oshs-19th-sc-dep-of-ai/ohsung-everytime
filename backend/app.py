@@ -13,6 +13,7 @@ from src.routes.notifications import notifications_bp
 from src.routes.posts import posts_bp
 from src.routes.admin import admin_bp
 from src.routes.timetable import timetable_bp
+from src.routes.inquiries import inquiries_bp
 
 from src.utils.firebase_util import FirebaseManager
 from src.utils.scheduler_util import NotificationScheduler
@@ -86,6 +87,7 @@ app.register_blueprint(notifications_bp)  # FCM 토큰 관리
 app.register_blueprint(posts_bp)          # 게시물
 app.register_blueprint(admin_bp)          # 관리자 전용 기능
 app.register_blueprint(timetable_bp)      # 개인 시간표
+app.register_blueprint(inquiries_bp)      # 1:1 문의 기능
 
 if __name__ == '__main__':
     try:
