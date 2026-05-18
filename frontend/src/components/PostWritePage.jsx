@@ -161,7 +161,15 @@ export const PostWritePage = () => {
               onChange={(e) => setBoardType(e.target.value)}
             >
               <option value="general">자유 게시판</option>
-              <option value="grade">학년 게시판</option>
+              {localStorage.getItem("eta_admin") === "true" ? (
+                <>
+                  <option value="grade1">1학년 게시판</option>
+                  <option value="grade2">2학년 게시판</option>
+                  <option value="grade3">3학년 게시판</option>
+                </>
+              ) : (
+                <option value="grade">학년 게시판</option>
+              )}
               <option value="lost_found">분실물 게시판</option>
             </select>
           </div>

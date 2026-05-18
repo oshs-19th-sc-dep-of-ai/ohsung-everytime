@@ -104,3 +104,20 @@ CREATE TABLE IF NOT EXISTS Timetable (
     UNIQUE KEY uq_student_schedule (student_id, day_of_week, period),
     FOREIGN KEY (student_id) REFERENCES Students (student_id) ON DELETE CASCADE
 );
+
+-- 푸시 알림 내역 저장 테이블
+CREATE TABLE push_notifications (
+    notification_id INT(11) NOT NULL AUTO_INCREMENT,
+    user_id VARCHAR(20) DEFAULT NULL,
+    title VARCHAR(255) NOT NULL,
+    body TEXT NOT NULL,
+    data LONGTEXT DEFAULT NULL,
+    icon VARCHAR(500) DEFAULT NULL,
+    link VARCHAR(500) DEFAULT NULL,
+    is_read TINYINT(1) DEFAULT 0,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (notification_id),
+    KEY idx_user_id (user_id),
+    KEY idx_is_read (is_read),
+    KEY idx_created_at (created_at)
+);

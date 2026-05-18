@@ -28,11 +28,6 @@ const HOT_LIKE_THRESHOLD = 40;
 const HOT_POST_LIMIT = 2;
 const POSTS_PER_PAGE = 10;
 
-const BOARD_TABS = [
-  { key: "general", label: "자유" },
-  { key: "grade", label: "학년" },
-  { key: "lost_found", label: "분실물" },
-];
 
 export function PostListPage() {
   const navigate = useNavigate();
@@ -53,7 +48,18 @@ export function PostListPage() {
     isAdmin && localStorage.getItem("show_deleted") === "true";
 
   const grade = localStorage.getItem("grade") || "";
-  const gradeLabel = grade ? `${grade}학년` : "학년";
+  
+  const BOARD_TABS = [
+    { key: "general", label: "자유" },
+  ];
+  if (isAdmin) {
+    BOARD_TABS.push({ key: "grade1", label: "1학년" });
+    BOARD_TABS.push({ key: "grade2", label: "2학년" });
+    BOARD_TABS.push({ key: "grade3", label: "3학년" });
+  } else {
+    BOARD_TABS.push({ key: "grade", label: grade ? `${grade}학년` : "학년" });
+  }
+  BOARD_TABS.push({ key: "lost_found", label: "분실물" });
 
   useEffect(() => {
     sessionStorage.setItem("board_page", currentPage);
@@ -205,7 +211,7 @@ export function PostListPage() {
             className={`board-tab ${boardType === tab.key ? "active" : ""}`}
             onClick={() => navigate(`/board/${tab.key}`)}
           >
-            {tab.key === "grade" ? gradeLabel : tab.label}
+            {tab.label}
           </button>
         ))}
       </div>
@@ -251,7 +257,7 @@ export function PostListPage() {
       <section className="general-section">
         <div className="list-header">
           <h3 className="section-title">
-            {boardType === "grade" ? gradeLabel : BOARD_TABS.find(t => t.key === boardType)?.label || "전체"} 게시글{" "}
+            {BOARD_TABS.find(t => t.key === boardType)?.label || "전체"} 게시글{" "}
             {isStale && (
               <span
                 className="stale-badge"

@@ -22,7 +22,14 @@ def get_posts():
 
     offset = (page - 1) * limit
 
-    board_type = request.args.get('board_type', 'general').strip()
+    board_type_input = request.args.get('board_type', 'general').strip()
+    
+    board_type = board_type_input
+    target_grade = None
+    if board_type_input in ['grade1', 'grade2', 'grade3']:
+        board_type = 'grade'
+        target_grade = int(board_type_input[-1])
+
     if board_type not in ['general', 'grade', 'lost_found']:
         board_type = 'general'
 
@@ -39,7 +46,10 @@ def get_posts():
     
     if board_type == 'grade':
         if is_eta_admin:
-            where_clause = f"WHERE p.board_type = 'grade' {deleted_filter}"
+            if target_grade:
+                where_clause = f"WHERE p.board_type = 'grade' {deleted_filter} AND s.grade = {target_grade}"
+            else:
+                where_clause = f"WHERE p.board_type = 'grade' {deleted_filter}"
         else:
             if not current_user:
                 return jsonify({"status": "error", "message": "로그인이 필요합니다."}), 401
@@ -223,7 +233,11 @@ def create_post():
     title        = data.get('title', '').strip()
     content      = data.get('content', '').strip()
     is_anonymous = bool(data.get('is_anonymous', False))
-    board_type   = data.get('board_type', 'general').strip()
+    board_type_input = data.get('board_type', 'general').strip()
+    board_type = board_type_input
+    
+    if board_type_input in ['grade1', 'grade2', 'grade3']:
+        board_type = 'grade'
     
     if board_type not in ['general', 'grade', 'lost_found']:
         return jsonify({"status": "error", "message": "유효하지 않은 게시판 종류입니다."}), 400
