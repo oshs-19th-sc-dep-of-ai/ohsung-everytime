@@ -8,6 +8,7 @@ import { offlineQueue } from "./utils/offlineQueue.js";
 import { MainPage } from "./components/MainPage";
 import { Header } from "./components/Header.jsx";
 import { PostListPage } from "./components/PostListPage.jsx";
+import { BoardCategoryPage } from "./components/BoardCategoryPage.jsx";
 import { PostDetailPage } from "./components/PostDetailPage";
 import { NotificationPage } from "./components/NotificationPage.jsx";
 import MealPage from "./components/meal.jsx";
@@ -142,6 +143,15 @@ function AnimatedRoutes() {
                     path="/board"
                     element={
                         <ProtectedRoute>
+                            <PageWrapper direction={direction}><BoardCategoryPage /></PageWrapper>
+                        </ProtectedRoute>
+                    }
+                />
+
+                <Route
+                    path="/board/:boardType"
+                    element={
+                        <ProtectedRoute>
                             <PageWrapper direction={direction}><PostListPage /></PageWrapper>
                         </ProtectedRoute>
                     }
@@ -233,6 +243,9 @@ function App() {
                             localStorage.setItem("status", "admin");
                         } else {
                             localStorage.setItem("status", "success");
+                        }
+                        if (res.data.grade !== undefined) {
+                            localStorage.setItem("grade", res.data.grade);
                         }
                     }
                 })

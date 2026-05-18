@@ -58,7 +58,8 @@ def login():
                 "eta_admin": True,
                 "admin_id": student_id,
                 "student_id": student_id,
-                "student_name": student_name
+                "student_name": student_name,
+                "grade": grade
             }), 200
         else:
             # 일반 학생 (rent_admin만 있는 경우도 여기 포함됨)
@@ -68,7 +69,8 @@ def login():
                 "rent_admin": bool(rent_admin),
                 "eta_admin": False,
                 "student_id": student_id,
-                "student_name": student_name
+                "student_name": student_name,
+                "grade": grade
             }), 200
     else:
         return jsonify({
@@ -96,6 +98,7 @@ def check_session():
         "admin_id": session.get("admin_id"),
         "rent_admin": bool(session.get("rent_admin")),
         "eta_admin": bool(session.get("eta_admin")),
+        "grade": session.get("grade"),
         "status": "success" if logged else "unauthorized"
     }), 200
 

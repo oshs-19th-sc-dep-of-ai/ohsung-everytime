@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import { API_BASE_URL } from "../config";
 import { useOfflineData } from "../hooks/useOfflineData";
@@ -36,10 +36,8 @@ const BOARD_TABS = [
 
 export function PostListPage() {
   const navigate = useNavigate();
+  const { boardType = "general" } = useParams();
   const [posts, setPosts] = useState([]);
-  const [boardType, setBoardType] = useState(
-    () => sessionStorage.getItem("board_type") || "general",
-  );
   const [currentPage, setCurrentPage] = useState(
     () => Number(sessionStorage.getItem("board_page")) || 1,
   );
@@ -53,6 +51,9 @@ export function PostListPage() {
   const isAdmin = localStorage.getItem("eta_admin") === "true";
   const showDeleted =
     isAdmin && localStorage.getItem("show_deleted") === "true";
+
+  const grade = localStorage.getItem("grade") || "";
+  const gradeLabel = grade ? `${grade}학년` : "학년";
 
   useEffect(() => {
     sessionStorage.setItem("board_page", currentPage);
@@ -202,9 +203,9 @@ export function PostListPage() {
           <button
             key={tab.key}
             className={`board-tab ${boardType === tab.key ? "active" : ""}`}
-            onClick={() => setBoardType(tab.key)}
+            onClick={() => navigate(`/board/${tab.key}`)}
           >
-            {tab.label}
+            {tab.key === "grade" ? gradeLabel : tab.label}
           </button>
         ))}
       </div>
@@ -250,7 +251,7 @@ export function PostListPage() {
       <section className="general-section">
         <div className="list-header">
           <h3 className="section-title">
-            전체 게시글{" "}
+            {boardType === "grade" ? gradeLabel : BOARD_TABS.find(t => t.key === boardType)?.label || "전체"} 게시글{" "}
             {isStale && (
               <span
                 className="stale-badge"

@@ -47,6 +47,9 @@ export function Login() {
             localStorage.setItem("status", data.status);
             localStorage.setItem("student_id", data.student_id);
             localStorage.setItem("eta_admin", data.eta_admin ? "true" : "false");
+            if (data.grade !== undefined) {
+                localStorage.setItem("grade", data.grade);
+            }
 
             showToast("로그인 성공! 메인 화면으로 이동합니다.");
             navigate("/", { replace: true });
