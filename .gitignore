@@ -8,3 +8,8 @@ docker-compose.yml
 backend/firebase_credentials.json
 .agents/workflows/test.md
 .gemini/settings.json
+
+# 실제 설정 파일 (절대 커밋하지 마세요)
+config.json
+deploy/config.json
+
