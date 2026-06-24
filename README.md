@@ -133,24 +133,24 @@ npm run dev
 이 프로젝트는 Docker Compose를 사용하여 웹 서버와 스케줄러를 분리하여 배포할 수 있습니다.
 
 ### 1. 저장소 클론
-\`\`\`bash
+```bash
 git clone https://github.com/oshs-19th-sc-dep-of-ai/ohsung-everytime.git
 cd ohsung-everytime
-\`\`\`
+```
 
 ### 2. 설정 파일 준비
-\`\`\`bash
+```bash
 cd deploy
 cp config.json.example config.json
 nano config.json   # 실제 DB 정보, NICE API Key, Session Key 등을 입력하세요
-\`\`\`
+```
 
 > **주의**: `config.json`은 `.gitignore`에 등록되어 있어 Git에 커밋되지 않습니다.
 
 ### 3. 배포 실행
-\`\`\`bash
+```bash
 ./deploy.sh
-\`\`\`
+```
 
 `deploy.sh`는 다음 작업을 자동으로 수행합니다:
 - Git 최신화 (`git pull`)
@@ -158,11 +158,11 @@ nano config.json   # 실제 DB 정보, NICE API Key, Session Key 등을 입력�
 - `backend-web`과 `backend-scheduler` 서비스 실행
 
 ### 4. 서비스 확인
-\`\`\`bash
+```bash
 docker compose ps
 docker compose logs -f backend-web
 docker compose logs -f backend-scheduler
-\`\`\`
+```
 
 ### 서비스 구성
 | 서비스              | 설명                     | 포트  |
