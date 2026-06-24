@@ -28,7 +28,8 @@ ALLOWED_ORIGINS = [
     "http://localhost:3000", 
     "http://127.0.0.1:3000",
     "http://192.168.45.119:3000",
-    "http://192.168.45.119:5173"
+    "http://192.168.45.119:5173",
+    "https://square.coshsc.kr",
 ]
 CORS(app, supports_credentials=True, resources={r"/*": {"origins": ALLOWED_ORIGINS}})
 Config().read_file("config.json")
