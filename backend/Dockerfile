@@ -14,7 +14,6 @@ RUN pip install --upgrade pip && \
 COPY backend/ ./backend/
 
 # 로컬 config.json 파일은 수정하지 않고, 도커 컨테이너 내부의 config 파일에서만 DB 호스트를 host.docker.internal로 변경
-RUN sed -i 's/"Host": "localhost"/"Host": "host.docker.internal"/g' ./backend/config.json
 
 # 작업 디렉토리를 백엔드로 이동
 WORKDIR /app/backend
